@@ -108,7 +108,18 @@ button:disabled {
   align-items: center;
   margin: 5px 0;
   font-family: "Courier New", Courier, monospace;
+  padding: 2px 4px; /* Add some padding for the hover effect */
+  border-radius: 4px; /* Rounded corners for the hover highlight */
+  transition: background-color 0.2s; /* Smooth transition for hover */
 }
+
+/* --- NEW --- */
+/* This is the new style for the hover state */
+.tree-item:hover {
+  background-color: #eef4ff;
+}
+/* --- END NEW --- */
+
 .tree-item label {
   margin-left: 5px;
   margin-right: 15px;
@@ -128,7 +139,8 @@ button:disabled {
 
 /* Style for the SELECTED icon. This is the crucial part for UX. */
 .tree-item-options input[type="radio"]:checked + .icon-label {
-  background-color: #e0eaff;
+  background-color: #bacefa;
+  text-shadow: #333 0 0 2px;
   /* border-color: var(--primary-color); */
 }
 

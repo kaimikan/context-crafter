@@ -138,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * MODIFIED FUNCTION
    * Renders icons instead of text labels.
+   * Defaults to 'path-only' instead of 'ignore'.
    */
   function createTree(item, parentElement, depth, panelIndex) {
     const li = document.createElement("li");
@@ -163,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "-"
     )}`;
 
-    // Render icon controls instead of text
+    // Full Content Radio
     optionsDiv.appendChild(
       createRadio(optionsId, "full", item.path, panelIndex)
     );
@@ -171,15 +172,16 @@ document.addEventListener("DOMContentLoaded", () => {
       createIconLabel(optionsId + "-full", "📝", "Full Content")
     );
 
-    optionsDiv.appendChild(
-      createRadio(optionsId, "path", item.path, panelIndex)
-    );
+    // Path Only Radio (now the default)
+    const pathRadio = createRadio(optionsId, "path", item.path, panelIndex);
+    pathRadio.checked = true; // Set "Path Only" as the default
+    optionsDiv.appendChild(pathRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-path", "🔗", "Path Only")
     );
 
+    // Ignore Radio (no longer the default)
     const ignoreRadio = createRadio(optionsId, "ignore", item.path, panelIndex);
-    ignoreRadio.checked = true;
     optionsDiv.appendChild(ignoreRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-ignore", "❌", "Ignore")
