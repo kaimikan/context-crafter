@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const showOnlyHighlightedToggle = document.getElementById(
     "show-only-highlighted-toggle"
   );
+  const massActionFullBtn = document.getElementById("mass-action-full");
+  const massActionPathBtn = document.getElementById("mass-action-path");
+  const massActionIgnoreBtn = document.getElementById("mass-action-ignore");
 
   const DEFAULT_BLACKLIST = new Set([
     ".git",
@@ -88,6 +91,11 @@ document.addEventListener("DOMContentLoaded", () => {
   expandAllBtn.addEventListener("click", () => expandAll(true));
   collapseAllBtn.addEventListener("click", () => expandAll(false));
   showOnlyHighlightedToggle.addEventListener("change", applyViewFilters);
+  massActionFullBtn.addEventListener("click", () => applyMassAction("full"));
+  massActionPathBtn.addEventListener("click", () => applyMassAction("path"));
+  massActionIgnoreBtn.addEventListener("click", () =>
+    applyMassAction("ignore")
+  );
 
   // --- CORE LOGIC ---
 
@@ -360,9 +368,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const highlightedItems = document.querySelectorAll(
       ".highlighted, .highlight-dependency, .highlight-dependent"
     );
+    const activeToggleButtons = document.querySelectorAll(
+      ".dep-toggle-btn.active"
+    );
 
     highlightedItems.forEach((item) => {
       let currentLi = item.closest(".tree-item-li");
+      while (currentLi) {
+        keepers.add(currentLi);
+        currentLi = currentLi.parentElement.closest(".tree-item-li");
+      }
+    });
+
+    activeToggleButtons.forEach((btn) => {
+      let currentLi = btn.closest(".tree-item-li");
       while (currentLi) {
         keepers.add(currentLi);
         currentLi = currentLi.parentElement.closest(".tree-item-li");
@@ -390,21 +409,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return baseParts.join("/");
   }
 
-  /**
-   * REWRITTEN to fix filename collision bug.
-   * Builds the dependency and dependent maps for a panel.
-   */
   async function buildDependencyGraph(panelIndex) {
     const panel = panels[panelIndex];
     const importRegex =
       /(?:from|require|import)\s*\(?\s*['"]((?:\.\/|\.\.\/|\/)?[\w@/.-]+)['"]/g;
 
-    // Create a robust lookup map that knows about full paths, with and without extensions.
     const pathLookup = new Map();
     for (const path of panel.fileHandles.keys()) {
       const pathWithoutExt = path.replace(/\.\w+$/, "");
-      pathLookup.set(path, path); // e.g., '.../user.js' -> '.../user.js'
-      pathLookup.set(pathWithoutExt, path); // e.g., '.../user' -> '.../user.js'
+      pathLookup.set(path, path);
+      pathLookup.set(pathWithoutExt, path);
     }
 
     for (const [filePath, handle] of panel.fileHandles.entries()) {
@@ -419,7 +433,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const importPath = match[1];
         const resolvedPath = resolveRelativePath(filePath, importPath);
 
-        // Use the new lookup map to find the canonical path.
         const targetPath = pathLookup.get(resolvedPath);
 
         if (targetPath) {
@@ -534,6 +547,28 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     applyViewFilters();
+  }
+
+  function applyMassAction(actionType) {
+    const highlightedItems = document.querySelectorAll(
+      ".tree-item.highlighted, .tree-item.highlight-dependency, .tree-item.highlight-dependent"
+    );
+
+    if (highlightedItems.length === 0) {
+      alert(
+        "No files are highlighted. Please search or use the dependency toggles first."
+      );
+      return;
+    }
+
+    highlightedItems.forEach((itemEl) => {
+      const radioToSelect = itemEl.querySelector(
+        `input[type="radio"][value="${actionType}"]`
+      );
+      if (radioToSelect) {
+        radioToSelect.checked = true;
+      }
+    });
   }
 
   async function handleGenerateContext() {
