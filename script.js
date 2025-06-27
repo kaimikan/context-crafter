@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- STATE & DOM ELEMENTS (No changes here) ---
+  // --- STATE & DOM ELEMENTS ---
   const panels = [
     { id: "left", handle: null, fileHandles: new Map(), title: "" },
     { id: "right", handle: null, fileHandles: new Map(), title: "" },
@@ -12,6 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const helpBtn = document.getElementById("help-btn");
   const helpModal = document.getElementById("help-modal");
   const modalCloseBtn = document.querySelector(".modal-close-btn");
+  // --- NEW: Search elements ---
+  const searchInput = document.getElementById("search-input");
+  const searchBtn = document.getElementById("search-btn");
+  const clearSearchBtn = document.getElementById("clear-search-btn");
 
   // --- CONFIGURATION (No changes here) ---
   const DEFAULT_BLACKLIST = new Set([
@@ -34,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ]);
   const CHARS_PER_TOKEN = 4;
 
-  // --- EVENT LISTENERS (No changes here) ---
+  // --- EVENT LISTENERS ---
   document.querySelectorAll(".select-dir-btn").forEach((btn) => {
     btn.addEventListener("click", (e) =>
       handleSelectDirectory(e.target.dataset.panelIndex)
@@ -59,10 +63,14 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("click", (e) => {
     if (e.target === helpModal) helpModal.classList.remove("visible");
   });
+  // --- NEW: Search event listeners ---
+  searchBtn.addEventListener("click", handleSearch);
+  clearSearchBtn.addEventListener("click", clearSearchHighlights);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSearch();
+  });
 
-  // --- CORE FUNCTIONS (Only createTree and its helpers are modified) ---
-
-  // No changes to handleSelectDirectory, traverseDirectory, handleTreeClick, handleOptionChange, handleGenerateContext, copyToClipboard
+  // --- CORE FUNCTIONS ---
 
   async function handleSelectDirectory(panelIndex) {
     panelIndex = parseInt(panelIndex);
@@ -137,14 +145,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * MODIFIED FUNCTION
-   * Renders icons instead of text labels.
-   * Defaults to 'path-only' instead of 'ignore'.
+   * Now adds a data-path attribute to the tree item div for searching.
    */
   function createTree(item, parentElement, depth, panelIndex) {
     const li = document.createElement("li");
     const itemDiv = document.createElement("div");
     itemDiv.className = "tree-item";
     itemDiv.style.marginLeft = `${depth * 20}px`;
+    itemDiv.dataset.path = item.path; // <-- MODIFICATION: Add data-path for easy selection
     const itemName = document.createElement("span");
     itemName.className = "item-name";
     if (item.type === "directory") {
@@ -156,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     itemDiv.appendChild(itemName);
 
-    // --- Start of Modified Block ---
     const optionsDiv = document.createElement("div");
     optionsDiv.className = "tree-item-options";
     const optionsId = `options-${panelIndex}-${item.path.replace(
@@ -164,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
       "-"
     )}`;
 
-    // Full Content Radio
     optionsDiv.appendChild(
       createRadio(optionsId, "full", item.path, panelIndex)
     );
@@ -172,15 +178,13 @@ document.addEventListener("DOMContentLoaded", () => {
       createIconLabel(optionsId + "-full", "📝", "Full Content")
     );
 
-    // Path Only Radio (now the default)
     const pathRadio = createRadio(optionsId, "path", item.path, panelIndex);
-    pathRadio.checked = true; // Set "Path Only" as the default
+    pathRadio.checked = true;
     optionsDiv.appendChild(pathRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-path", "🔗", "Path Only")
     );
 
-    // Ignore Radio (no longer the default)
     const ignoreRadio = createRadio(optionsId, "ignore", item.path, panelIndex);
     optionsDiv.appendChild(ignoreRadio);
     optionsDiv.appendChild(
@@ -188,8 +192,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     itemDiv.appendChild(optionsDiv);
-    // --- End of Modified Block ---
-
     li.appendChild(itemDiv);
     parentElement.appendChild(li);
 
@@ -216,16 +218,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return radio;
   }
 
-  /**
-   * NEW FUNCTION
-   * Creates the icon label with a hover tooltip (title).
-   */
   function createIconLabel(forId, icon, titleText) {
     const label = document.createElement("label");
     label.htmlFor = forId;
     label.className = "icon-label";
     label.textContent = icon;
-    label.title = titleText; // This creates the native hover tooltip
+    label.title = titleText;
     return label;
   }
 
@@ -257,6 +255,77 @@ document.addEventListener("DOMContentLoaded", () => {
         descendantRadios.forEach((radio) => (radio.checked = true));
       }
     }
+  }
+
+  // --- NEW: Search and Highlight Functions ---
+  function clearSearchHighlights() {
+    document.querySelectorAll(".tree-item.highlighted").forEach((el) => {
+      el.classList.remove("highlighted");
+    });
+    searchInput.value = "";
+  }
+
+  async function handleSearch() {
+    const searchTerm = searchInput.value.trim();
+
+    // Clear previous highlights before starting a new search
+    clearSearchHighlights();
+    searchInput.value = searchTerm;
+
+    if (!searchTerm) return;
+
+    searchBtn.textContent = "Searching...";
+    searchBtn.disabled = true;
+
+    for (const panel of panels) {
+      if (!panel.handle) continue;
+
+      for (const [path, handle] of panel.fileHandles.entries()) {
+        if (handle.kind !== "file") continue;
+
+        try {
+          const file = await handle.getFile();
+          // Avoid reading huge files
+          if (file.size > 10 * 1024 * 1024) {
+            // 10 MB limit
+            console.log(`Skipping large file: ${path}`);
+            continue;
+          }
+          const content = await file.text();
+
+          if (content.includes(searchTerm)) {
+            const treeItemEl = document.querySelector(
+              `.tree-item[data-path="${CSS.escape(path)}"]`
+            );
+            if (treeItemEl) {
+              treeItemEl.classList.add("highlighted");
+
+              // Expand parent folders to make the highlight visible
+              let parentLi = treeItemEl.parentElement;
+              while (parentLi) {
+                const parentUl = parentLi.parentElement;
+                if (parentUl && parentUl.classList.contains("collapsed")) {
+                  parentUl.classList.remove("collapsed");
+                  const folderTitleDiv = parentUl.previousElementSibling;
+                  const folderIcon =
+                    folderTitleDiv.querySelector(".folder-title span");
+                  if (folderIcon) {
+                    folderIcon.innerHTML = "&#x1F4C2;"; // open folder icon
+                  }
+                }
+                // Move up the DOM tree
+                parentLi = parentUl.parentElement.closest("li");
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`Could not read file ${path} for search:`, e);
+        }
+      }
+    }
+
+    searchBtn.textContent = "Search";
+    searchBtn.disabled = false;
   }
 
   async function handleGenerateContext() {

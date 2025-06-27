@@ -6,6 +6,8 @@
   --border-color: #dee2e6;
   --container-bg: #ffffff;
   --code-bg: #e9ecef;
+  --highlight-bg: #fffde7; /* Yellow for highlighting */
+  --highlight-border: #fbc02d;
 }
 
 body {
@@ -89,6 +91,33 @@ button:disabled {
   box-sizing: border-box;
 }
 
+/* --- NEW: Styles for Search Section --- */
+.search-section {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  background-color: #fafafa;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+}
+
+#search-input {
+  flex-grow: 1;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+#clear-search-btn {
+  background-color: #6c757d;
+}
+#clear-search-btn:hover {
+  background-color: #5a6268;
+}
+/* --- END NEW --- */
+
 #file-tree-container {
   border: 1px solid var(--border-color);
   padding: 15px;
@@ -110,13 +139,18 @@ button:disabled {
   font-family: "Courier New", Courier, monospace;
   padding: 2px 4px; /* Add some padding for the hover effect */
   border-radius: 4px; /* Rounded corners for the hover highlight */
-  transition: background-color 0.2s; /* Smooth transition for hover */
+  transition: background-color 0.2s, border 0.2s;
+  border: 1px solid transparent; /* Add transparent border for smooth transition */
 }
 
-/* --- NEW --- */
-/* This is the new style for the hover state */
 .tree-item:hover {
   background-color: #eef4ff;
+}
+
+/* --- NEW: Highlight Style --- */
+.tree-item.highlighted {
+  background-color: var(--highlight-bg);
+  border: 1px solid var(--highlight-border);
 }
 /* --- END NEW --- */
 
@@ -125,26 +159,20 @@ button:disabled {
   margin-right: 15px;
 }
 
-/* 2. Styles for the new Icon-based toggles */
 .tree-item-options {
   margin-left: auto;
   display: flex;
   gap: 5px; /* Space between icons */
 }
 
-/* Hide the actual radio button circle */
 .tree-item-options input[type="radio"] {
   display: none;
 }
 
-/* Style for the SELECTED icon. This is the crucial part for UX. */
 .tree-item-options input[type="radio"]:checked + .icon-label {
-  background-color: #bacefa;
-  text-shadow: #333 0 0 2px;
-  /* border-color: var(--primary-color); */
+  background-color: #e0eaff;
 }
 
-/* Style the label (which now contains the icon) to look like a button */
 .icon-label {
   cursor: pointer;
   font-size: 1.2em; /* Makes icons a bit bigger */
@@ -221,7 +249,6 @@ button:disabled {
   font-size: 0.9em;
 }
 
-/* Panels for Side-by-Side View */
 .panels-container {
   display: flex;
   gap: 20px;
@@ -337,7 +364,6 @@ button:disabled {
   gap: 15px; /* Creates space between the "Copy" button and the token text */
 }
 
-/* Remove the margin from the old generate button to avoid conflicts */
 #generate-btn {
   margin: 0;
 }
