@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Context Crafter GUI</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Context Crafter GUI</h1>
+        <p>
+          Select a project folder and choose which files to include in the
+          context prompt for your AI assistant.
+        </p>
+      </header>
+
+      <section class="controls">
+        <button id="select-dir-btn">1. Select Project Folder</button>
+        <div class="task-input">
+          <label for="task-desc">2. Describe your task:</label>
+          <input
+            type="text"
+            id="task-desc"
+            placeholder="e.g., Fix the user login bug"
+          />
+        </div>
+      </section>
+
+      <section class="file-selection">
+        <h2>3. Choose Files for Context</h2>
+        <div id="file-tree-container">
+          <p class="placeholder">Your project file tree will appear here...</p>
+        </div>
+      </section>
+
+      <section class="generation">
+        <button id="generate-btn" disabled>4. Generate Context</button>
+      </section>
+
+      <section class="output">
+        <h2>Generated Context</h2>
+        <div class="output-toolbar">
+          <button id="copy-btn">Copy to Clipboard</button>
+          <span id="token-count">Tokens: 0</span>
+        </div>
+        <textarea
+          id="output-context"
+          readonly
+          placeholder="The final context for your prompt will be generated here..."
+        ></textarea>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
