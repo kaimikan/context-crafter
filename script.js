@@ -5,8 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
       id: "left",
       handle: null,
       fileHandles: new Map(),
-      dependencies: new Map(), // filePath -> Set of dependency paths
-      dependents: new Map(), // filePath -> Set of dependent paths
+      dependencies: new Map(),
+      dependents: new Map(),
     },
     {
       id: "right",
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
       dependents: new Map(),
     },
   ];
-  const fileHighlightStates = new Map(); // filePath -> { showDeps: bool, showDependents: bool }
+  const fileHighlightStates = new Map();
 
   const generateBtn = document.getElementById("generate-btn");
   const copyBtn = document.getElementById("copy-btn");
@@ -33,6 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const collapseAllBtn = document.getElementById("collapse-all-btn");
   const showOnlyHighlightedToggle = document.getElementById(
     "show-only-highlighted-toggle"
+  );
+  const showOnlyIncludedToggle = document.getElementById(
+    "show-only-included-toggle"
   );
   const massActionFullBtn = document.getElementById("mass-action-full");
   const massActionPathBtn = document.getElementById("mass-action-path");
@@ -91,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
   expandAllBtn.addEventListener("click", () => expandAll(true));
   collapseAllBtn.addEventListener("click", () => expandAll(false));
   showOnlyHighlightedToggle.addEventListener("change", applyViewFilters);
+  showOnlyIncludedToggle.addEventListener("change", applyViewFilters);
   massActionFullBtn.addEventListener("click", () => applyMassAction("full"));
   massActionPathBtn.addEventListener("click", () => applyMassAction("path"));
   massActionIgnoreBtn.addEventListener("click", () =>
@@ -105,15 +109,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const handle = await window.showDirectoryPicker();
       if (handle) {
         const panel = panels[panelIndex];
+
+        clearPanelState(panelIndex);
+
         panel.handle = handle;
         const container = document.querySelector(
           `.file-tree-container[data-panel-index="${panelIndex}"]`
         );
         container.innerHTML = "<p>Loading file tree...</p>";
-
-        panel.fileHandles.clear();
-        panel.dependencies.clear();
-        panel.dependents.clear();
 
         const treeStructure = await traverseDirectory(
           handle,
@@ -125,8 +128,10 @@ document.addEventListener("DOMContentLoaded", () => {
         container.innerHTML += "<p>Analyzing dependencies...</p>";
         await buildDependencyGraph(panelIndex);
         container.querySelector("p:last-child").remove();
+
         showOnlyHighlightedToggle.checked = false;
-        clearAllHighlights();
+        showOnlyIncludedToggle.checked = false;
+        applyViewFilters();
 
         if (!panel.title) {
           document.querySelector(`#panel-${panel.id} .panel-title`).value =
@@ -221,23 +226,32 @@ document.addEventListener("DOMContentLoaded", () => {
       /[^a-zA-Z0-9]/g,
       "-"
     )}`;
+
     optionsDiv.appendChild(
       createRadio(optionsId, "full", item.path, panelIndex)
     );
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-full", "📝", "Full Content")
     );
-    const pathRadio = createRadio(optionsId, "path", item.path, panelIndex);
-    pathRadio.checked = true;
-    optionsDiv.appendChild(pathRadio);
+
+    optionsDiv.appendChild(
+      createRadio(optionsId, "path", item.path, panelIndex)
+    );
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-path", "🔗", "Path Only")
     );
+
     const ignoreRadio = createRadio(optionsId, "ignore", item.path, panelIndex);
+    ignoreRadio.checked = true;
     optionsDiv.appendChild(ignoreRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-ignore", "❌", "Ignore")
     );
+
+    // --- FIX: Manually dispatch the change event for the default checked radio ---
+    // This ensures the initial state is fully registered by all event handlers.
+    ignoreRadio.dispatchEvent(new Event("change", { bubbles: true }));
+
     itemDiv.appendChild(optionsDiv);
     li.appendChild(itemDiv);
     parentElement.appendChild(li);
@@ -321,7 +335,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const descendantRadios = childrenUl.querySelectorAll(
           `input[type="radio"][value="${targetRadio.value}"]`
         );
-        descendantRadios.forEach((radio) => (radio.checked = true));
+        descendantRadios.forEach((radio) => {
+          radio.checked = true;
+        });
       }
     }
   }
@@ -354,42 +370,62 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applyViewFilters() {
-    const shouldFilter = showOnlyHighlightedToggle.checked;
-
-    document
-      .querySelectorAll(".tree-item-li.hidden-by-filter")
-      .forEach((li) => {
-        li.classList.remove("hidden-by-filter");
-      });
-
-    if (!shouldFilter) return;
-
-    const keepers = new Set();
-    const highlightedItems = document.querySelectorAll(
-      ".highlighted, .highlight-dependency, .highlight-dependent"
-    );
-    const activeToggleButtons = document.querySelectorAll(
-      ".dep-toggle-btn.active"
-    );
-
-    highlightedItems.forEach((item) => {
-      let currentLi = item.closest(".tree-item-li");
-      while (currentLi) {
-        keepers.add(currentLi);
-        currentLi = currentLi.parentElement.closest(".tree-item-li");
-      }
-    });
-
-    activeToggleButtons.forEach((btn) => {
-      let currentLi = btn.closest(".tree-item-li");
-      while (currentLi) {
-        keepers.add(currentLi);
-        currentLi = currentLi.parentElement.closest(".tree-item-li");
-      }
-    });
+    const shouldFilterByHighlight = showOnlyHighlightedToggle.checked;
+    const shouldFilterByInclusion = showOnlyIncludedToggle.checked;
 
     document.querySelectorAll(".tree-item-li").forEach((li) => {
-      if (!keepers.has(li)) {
+      li.classList.remove("hidden-by-filter");
+    });
+
+    if (!shouldFilterByHighlight && !shouldFilterByInclusion) return;
+
+    let highlightKeepers = new Set();
+    if (shouldFilterByHighlight) {
+      const highlightedItems = document.querySelectorAll(
+        ".highlighted, .highlight-dependency, .highlight-dependent"
+      );
+      const activeToggleButtons = document.querySelectorAll(
+        ".dep-toggle-btn.active"
+      );
+      const allSources = [...highlightedItems, ...activeToggleButtons];
+
+      allSources.forEach((item) => {
+        let currentLi = item.closest(".tree-item-li");
+        while (currentLi) {
+          highlightKeepers.add(currentLi);
+          currentLi = currentLi.parentElement.closest(".tree-item-li");
+        }
+      });
+    }
+
+    let inclusionKeepers = new Set();
+    if (shouldFilterByInclusion) {
+      document
+        .querySelectorAll(
+          'input[type="radio"][value="full"]:checked, input[type="radio"][value="path"]:checked'
+        )
+        .forEach((radio) => {
+          let currentLi = radio.closest(".tree-item-li");
+          while (currentLi) {
+            inclusionKeepers.add(currentLi);
+            currentLi = currentLi.parentElement.closest(".tree-item-li");
+          }
+        });
+    }
+
+    let finalKeepers;
+    if (shouldFilterByHighlight && shouldFilterByInclusion) {
+      finalKeepers = new Set(
+        [...highlightKeepers].filter((i) => inclusionKeepers.has(i))
+      );
+    } else if (shouldFilterByHighlight) {
+      finalKeepers = highlightKeepers;
+    } else {
+      finalKeepers = inclusionKeepers;
+    }
+
+    document.querySelectorAll(".tree-item-li").forEach((li) => {
+      if (!finalKeepers.has(li)) {
         li.classList.add("hidden-by-filter");
       }
     });
@@ -484,6 +520,42 @@ document.addEventListener("DOMContentLoaded", () => {
     applyViewFilters();
   }
 
+  function clearPanelState(panelIndex) {
+    const panel = panels[panelIndex];
+    if (!panel || !panel.handle) return;
+
+    const rootPath = panel.handle.name;
+
+    const statesToDelete = [];
+    for (const path of fileHighlightStates.keys()) {
+      if (path.startsWith(rootPath)) {
+        statesToDelete.push(path);
+      }
+    }
+    statesToDelete.forEach((path) => fileHighlightStates.delete(path));
+
+    document
+      .querySelectorAll(
+        `.file-tree-container[data-panel-index="${panelIndex}"] .tree-item-li`
+      )
+      .forEach((li) => {
+        li.querySelector(".dep-toggle-btn.active")?.classList.remove("active");
+        const item = li.querySelector(".tree-item");
+        if (item) {
+          item.classList.remove(
+            "highlighted",
+            "highlight-dependency",
+            "highlight-dependent"
+          );
+        }
+      });
+
+    panel.dependencies.clear();
+    panel.dependents.clear();
+    panel.fileHandles.clear();
+    panel.title = "";
+  }
+
   function clearAllHighlights() {
     fileHighlightStates.clear();
     document
@@ -501,9 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       });
     searchInput.value = "";
-    if (showOnlyHighlightedToggle.checked) {
-      applyViewFilters();
-    }
+    applyViewFilters();
   }
 
   function findPanelAndHandleForPath(path) {
@@ -516,9 +586,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function handleSearch() {
+    document
+      .querySelectorAll(".tree-item.highlighted")
+      .forEach((el) => el.classList.remove("highlighted"));
+
     const searchTerm = searchInput.value.trim();
-    clearAllHighlights();
-    searchInput.value = searchTerm;
     if (!searchTerm) {
       applyViewFilters();
       return;
@@ -553,20 +625,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const highlightedItems = document.querySelectorAll(
       ".tree-item.highlighted, .tree-item.highlight-dependency, .tree-item.highlight-dependent"
     );
+    const activeToggleItems = document.querySelectorAll(
+      ".dep-toggle-btn.active"
+    );
 
-    if (highlightedItems.length === 0) {
+    const elementSet = new Set();
+    highlightedItems.forEach((item) => elementSet.add(item));
+    activeToggleItems.forEach((btn) =>
+      elementSet.add(btn.closest(".tree-item"))
+    );
+
+    if (elementSet.size === 0) {
       alert(
-        "No files are highlighted. Please search or use the dependency toggles first."
+        "No files are highlighted or toggled. Please search or use the dependency toggles first."
       );
       return;
     }
 
-    highlightedItems.forEach((itemEl) => {
+    elementSet.forEach((itemEl) => {
       const radioToSelect = itemEl.querySelector(
         `input[type="radio"][value="${actionType}"]`
       );
       if (radioToSelect) {
         radioToSelect.checked = true;
+        radioToSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
   }
@@ -576,6 +658,7 @@ document.addEventListener("DOMContentLoaded", () => {
       taskDescEl.value || "No task description provided."
     }\n\n`;
     let totalTokens = 0;
+
     for (const [index, panel] of panels.entries()) {
       if (!panel.handle) continue;
       const fullContentFiles = new Set();
@@ -583,36 +666,84 @@ document.addEventListener("DOMContentLoaded", () => {
       const container = document.querySelector(
         `.file-tree-container[data-panel-index="${index}"]`
       );
+
       container
         .querySelectorAll('input[type="radio"]:checked')
         .forEach((radio) => {
+          if (radio.value === "ignore") return;
+
           const path = radio.dataset.filePath;
-          if (panel.fileHandles.has(path)) {
+          const [filePanel] = findPanelAndHandleForPath(path) || [];
+          if (
+            filePanel &&
+            panels[index].handle.name === filePanel.handle.name
+          ) {
             if (radio.value === "full") fullContentFiles.add(path);
             else if (radio.value === "path") pathOnlyFiles.add(path);
           }
         });
+
       if (fullContentFiles.size === 0 && pathOnlyFiles.size === 0) continue;
+
       const panelTitle = panel.title || panel.handle.name;
       output += `--- PROJECT: ${panelTitle} ---\n`;
-      const sortedFullContentFiles = [...fullContentFiles].sort();
-      const sortedPathOnlyFiles = [...pathOnlyFiles].sort();
-      const pathOnlySet = new Set(sortedPathOnlyFiles);
-      const allFilesInContext = [
-        ...sortedFullContentFiles,
-        ...sortedPathOnlyFiles,
-      ].sort();
-      let fileTreeString = "";
+
+      const allFilesInContext = [...fullContentFiles, ...pathOnlyFiles].sort();
+
+      const fileTree = {};
       allFilesInContext.forEach((path) => {
         const relativePath = path.substring(panel.handle.name.length + 1);
+        let currentNode = fileTree;
         const parts = relativePath.split("/");
-        fileTreeString +=
-          "|-- ".padStart(parts.length * 4, " ") + parts[parts.length - 1];
-        if (pathOnlySet.has(path)) fileTreeString += " [PATH ONLY]";
-        fileTreeString += "\n";
+        parts.forEach((part, i) => {
+          if (i === parts.length - 1) {
+            currentNode[part] = { _isFile: true, _path: path };
+          } else {
+            currentNode[part] = currentNode[part] || {};
+            currentNode = currentNode[part];
+          }
+        });
       });
-      output += `/${fileTreeString}\n--- FILE CONTENT for ${panelTitle} ---\n`;
-      for (const path of sortedFullContentFiles) {
+
+      let fileTreeString = "";
+      function printTree(node, prefix = "") {
+        const entries = Object.keys(node).sort((a, b) => {
+          const aIsFile = node[a]?._isFile;
+          const bIsFile = node[b]?._isFile;
+          if (a === "_isFile" || a === "_path") return 1;
+          if (b === "_isFile" || b === "_path") return -1;
+          if (aIsFile && !bIsFile) return 1;
+          if (!aIsFile && bIsFile) return -1;
+          return a.localeCompare(b);
+        });
+        entries.forEach((entry, i) => {
+          if (entry === "_isFile" || entry === "_path") return;
+
+          const isLast =
+            i ===
+            entries.filter((e) => e !== "_isFile" && e !== "_path").length - 1;
+
+          const newPrefix = prefix + (isLast ? "    " : "│   ");
+          const connector = isLast ? "└── " : "├── ";
+
+          if (node[entry]._isFile) {
+            fileTreeString += prefix + connector + entry;
+            if (pathOnlyFiles.has(node[entry]._path)) {
+              fileTreeString += " [PATH ONLY]";
+            }
+            fileTreeString += "\n";
+          } else {
+            fileTreeString += prefix + connector + entry + "/\n";
+            printTree(node[entry], newPrefix);
+          }
+        });
+      }
+
+      printTree(fileTree);
+      output += fileTreeString;
+
+      output += `\n--- FILE CONTENT for ${panelTitle} ---\n`;
+      for (const path of fullContentFiles) {
         const handle = panel.fileHandles.get(path);
         const relativePath = path.substring(panel.handle.name.length + 1);
         output += `\n${"=".repeat(10)} File: ${relativePath} ${"=".repeat(

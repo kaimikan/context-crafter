@@ -119,10 +119,9 @@ button:disabled {
   background-color: #5a6268;
 }
 
-/* --- NEW: View Controls Styles --- */
 .view-controls {
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  flex-wrap: wrap;
   align-items: center;
   gap: 15px;
   padding: 10px;
@@ -151,14 +150,11 @@ button:disabled {
   color: var(--text-color);
 }
 
-/* --- END NEW --- */
-
-/* --- NEW: Mass Action Controls --- */
 .mass-action-controls {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto; /* Pushes it to the right */
+  margin-left: auto;
 }
 
 .mass-action-controls button {
@@ -185,7 +181,6 @@ button:disabled {
 #mass-action-ignore:hover {
   background-color: #c82333;
 }
-/* --- END NEW --- */
 
 #file-tree-container {
   border: 1px solid var(--border-color);
@@ -216,7 +211,6 @@ button:disabled {
   background-color: #eef4ff;
 }
 
-/* --- NEW/MODIFIED: Highlight Styles --- */
 .tree-item.highlighted {
   background-color: var(--highlight-bg);
   border: 1px solid var(--highlight-border);
@@ -234,15 +228,12 @@ button:disabled {
   display: none !important;
 }
 
-/* --- END NEW/MODIFIED --- */
-
 .item-name {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-/* --- NEW: Style for the dependency toggle buttons --- */
 .dep-toggle-btn {
   font-family: "Courier New", Courier, monospace;
   font-weight: bold;
@@ -273,7 +264,6 @@ button:disabled {
   border-color: var(--dependent-border);
   color: #000;
 }
-/* --- END NEW --- */
 
 .tree-item label {
   margin-left: 5px;
@@ -290,10 +280,19 @@ button:disabled {
   display: none;
 }
 
-.tree-item-options input[type="radio"]:checked + .icon-label {
-  text-shadow: #000 0 0 3px;
-  background-color: #bcd2ff;
+/* --- MODIFIED: Replaced the single rule with three specific, color-coded rules --- */
+.tree-item-options input[value="full"]:checked + .icon-label {
+  background-color: #e6ffed; /* Light Green */
 }
+
+.tree-item-options input[value="path"]:checked + .icon-label {
+  background-color: #fdfbe3; /* Light Blue */
+}
+
+.tree-item-options input[value="ignore"]:checked + .icon-label {
+  background-color: #ffebee; /* Light Red */
+}
+/* --- END MODIFICATION --- */
 
 .icon-label {
   cursor: pointer;
@@ -393,7 +392,6 @@ button:disabled {
   font-weight: bold;
 }
 
-/* Modal styles unchanged */
 .help-button {
   position: absolute;
   top: 25px;
