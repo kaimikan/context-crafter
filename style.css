@@ -6,8 +6,12 @@
   --border-color: #dee2e6;
   --container-bg: #ffffff;
   --code-bg: #e9ecef;
-  --highlight-bg: #fffde7; /* Yellow for highlighting */
+  --highlight-bg: #fffde7;
   --highlight-border: #fbc02d;
+  --dependency-bg: #e3f2fd;
+  --dependency-border: #2196f3;
+  --dependent-bg: #e6ffed;
+  --dependent-border: #4caf50;
 }
 
 body {
@@ -20,9 +24,8 @@ body {
   padding: 20px;
 }
 
-/* 1. Make the entire app wider */
 .container {
-  max-width: 95vw; /* Changed from 900px */
+  max-width: 95vw;
   margin: 0 auto;
   background: var(--container-bg);
   padding: 25px;
@@ -91,7 +94,6 @@ button:disabled {
   box-sizing: border-box;
 }
 
-/* --- NEW: Styles for Search Section --- */
 .search-section {
   display: flex;
   gap: 10px;
@@ -116,6 +118,37 @@ button:disabled {
 #clear-search-btn:hover {
   background-color: #5a6268;
 }
+
+/* --- NEW: View Controls Styles --- */
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background-color: #fafafa;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  margin-bottom: 10px; /* Separates it from the search bar */
+}
+
+#collapse-all-btn {
+  background-color: #6c757d;
+}
+#collapse-all-btn:hover {
+  background-color: #5a6268;
+}
+
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.toggle-switch label {
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--text-color);
+}
 /* --- END NEW --- */
 
 #file-tree-container {
@@ -137,20 +170,74 @@ button:disabled {
   align-items: center;
   margin: 5px 0;
   font-family: "Courier New", Courier, monospace;
-  padding: 2px 4px; /* Add some padding for the hover effect */
-  border-radius: 4px; /* Rounded corners for the hover highlight */
+  padding: 2px 4px;
+  border-radius: 4px;
   transition: background-color 0.2s, border 0.2s;
-  border: 1px solid transparent; /* Add transparent border for smooth transition */
+  border: 1px solid transparent;
 }
 
 .tree-item:hover {
   background-color: #eef4ff;
 }
 
-/* --- NEW: Highlight Style --- */
+/* --- NEW/MODIFIED: Highlight Styles --- */
 .tree-item.highlighted {
   background-color: var(--highlight-bg);
   border: 1px solid var(--highlight-border);
+}
+
+.tree-item.highlight-dependency {
+  background-color: var(--dependency-bg);
+  border-color: var(--dependency-border);
+}
+
+.tree-item.highlight-dependent {
+  background-color: var(--dependent-bg);
+  border-color: var(--dependent-border);
+}
+
+/* --- NEW: Class to hide items for filtering --- */
+.tree-item-li.hidden-by-filter {
+  display: none !important;
+}
+/* --- END NEW/MODIFIED --- */
+
+.item-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- NEW: Style for the dependency toggle buttons --- */
+.dep-toggle-btn {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  cursor: pointer;
+  color: #888;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 0.9em;
+  border: 1px solid #ccc;
+  background: #fff;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  user-select: none;
+}
+
+.dep-toggle-btn:hover {
+  background: #e0e0e0;
+  color: #000;
+}
+
+.dep-toggle-btn.active.dep-btn {
+  background-color: var(--dependency-bg);
+  border-color: var(--dependency-border);
+  color: #000;
+}
+
+.dep-toggle-btn.active.dependent-btn {
+  background-color: var(--dependent-bg);
+  border-color: var(--dependent-border);
+  color: #000;
 }
 /* --- END NEW --- */
 
@@ -162,7 +249,7 @@ button:disabled {
 .tree-item-options {
   margin-left: auto;
   display: flex;
-  gap: 5px; /* Space between icons */
+  gap: 5px;
 }
 
 .tree-item-options input[type="radio"] {
@@ -170,12 +257,13 @@ button:disabled {
 }
 
 .tree-item-options input[type="radio"]:checked + .icon-label {
-  background-color: #e0eaff;
+  text-shadow: #000 0 0 3px;
+  background-color: #bcd2ff;
 }
 
 .icon-label {
   cursor: pointer;
-  font-size: 1.2em; /* Makes icons a bit bigger */
+  font-size: 1.2em;
   padding: 4px 6px;
   border-radius: 5px;
   transition: background-color 0.2s, transform 0.2s;
@@ -191,7 +279,7 @@ button:disabled {
 
 .folder-title {
   cursor: pointer;
-  user-select: none; /* Prevents text selection on double click */
+  user-select: none;
   font-weight: bold;
 }
 
@@ -229,7 +317,7 @@ button:disabled {
 }
 
 .step h2 {
-  font-size: 1.2em; /* Consistent heading size */
+  font-size: 1.2em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -271,7 +359,7 @@ button:disabled {
   font-weight: bold;
 }
 
-/* Help Modal Styles */
+/* Modal styles unchanged */
 .help-button {
   position: absolute;
   top: 25px;
@@ -288,7 +376,7 @@ button:disabled {
 }
 
 .modal {
-  display: none; /* Hidden by default */
+  display: none;
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -353,15 +441,15 @@ button:disabled {
 
 .generate-copy-buttons {
   display: flex;
-  justify-content: space-between; /* Pushes children to opposite ends */
-  align-items: center; /* Vertically aligns them in the middle */
-  margin-bottom: 15px; /* Adds some space below the buttons */
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
 .output-toolbar {
   display: flex;
-  align-items: center; /* Vertically aligns the button and token count */
-  gap: 15px; /* Creates space between the "Copy" button and the token text */
+  align-items: center;
+  gap: 15px;
 }
 
 #generate-btn {
