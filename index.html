@@ -11,39 +11,61 @@
       <header>
         <h1>Context Crafter GUI</h1>
         <p>
-          Select a project folder and choose which files to include in the
-          context prompt for your AI assistant.
+          Select project folders and choose files to generate a context prompt
+          for your AI assistant.
         </p>
+        <button id="help-btn" class="help-button">? Help</button>
       </header>
 
-      <section class="controls">
-        <button id="select-dir-btn">1. Select Project Folder</button>
-        <div class="task-input">
-          <label for="task-desc">2. Describe your task:</label>
-          <input
-            type="text"
-            id="task-desc"
-            placeholder="e.g., Fix the user login bug"
-          />
+      <section class="step">
+        <h2><span class="step-number">1.</span> Select Project Folders</h2>
+        <div class="panels-container">
+          <div class="panel" id="panel-left">
+            <input
+              type="text"
+              class="panel-title"
+              placeholder="e.g., Frontend"
+            />
+            <button class="select-dir-btn" data-panel-index="0">
+              Select Folder
+            </button>
+            <div class="file-tree-container" data-panel-index="0">
+              <p class="placeholder">Left panel is empty...</p>
+            </div>
+          </div>
+          <div class="panel" id="panel-right">
+            <input
+              type="text"
+              class="panel-title"
+              placeholder="e.g., Backend"
+            />
+            <button class="select-dir-btn" data-panel-index="1">
+              Select Folder
+            </button>
+            <div class="file-tree-container" data-panel-index="1">
+              <p class="placeholder">Right panel is empty...</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="file-selection">
-        <h2>3. Choose Files for Context</h2>
-        <div id="file-tree-container">
-          <p class="placeholder">Your project file tree will appear here...</p>
-        </div>
+      <section class="step">
+        <h2><span class="step-number">2.</span> Describe Your Task</h2>
+        <input
+          type="text"
+          id="task-desc"
+          placeholder="e.g., Connect the login form to the auth endpoint"
+        />
       </section>
 
-      <section class="generation">
-        <button id="generate-btn" disabled>4. Generate Context</button>
-      </section>
-
-      <section class="output">
-        <h2>Generated Context</h2>
-        <div class="output-toolbar">
-          <button id="copy-btn">Copy to Clipboard</button>
-          <span id="token-count">Tokens: 0</span>
+      <section class="step">
+        <h2><span class="step-number">3.</span> Generate & Copy Context</h2>
+        <div class="generate-copy-buttons">
+          <button id="generate-btn">Generate Context</button>
+          <div class="output-toolbar">
+            <button id="copy-btn">Copy to Clipboard</button>
+            <span id="token-count">Tokens: 0</span>
+          </div>
         </div>
         <textarea
           id="output-context"
@@ -52,6 +74,52 @@
         ></textarea>
       </section>
     </main>
+
+    <div id="help-modal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close-btn">&times;</span>
+        <h3>How to Use Context Crafter</h3>
+        <ul>
+          <li>
+            <strong>Select Folders:</strong> Click "Select Folder" in either
+            panel to load a local project folder (e.g., your frontend or
+            backend).
+          </li>
+          <li>
+            <strong>Choose Files:</strong> For each file and folder in the tree,
+            choose an option:
+            <ul>
+              <li>
+                <strong>Full:</strong> Includes the file's entire content.
+              </li>
+              <li>
+                <strong>Path Only:</strong> Includes only the file's name and
+                path, saving tokens.
+              </li>
+              <li><strong>Ignore:</strong> Excludes the file completely.</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Use Folder Actions:</strong> Setting an option for a folder
+            (e.g., setting `src` to "Full") will apply that setting to all files
+            and subfolders within it.
+          </li>
+          <li>
+            <strong>Describe Your Task:</strong> Briefly explain what you're
+            trying to achieve.
+          </li>
+          <li>
+            <strong>Generate:</strong> Click "Generate Context" to compile
+            everything into a single, clean prompt in the text area below.
+          </li>
+          <li>
+            <strong>Copy:</strong> Use the "Copy to Clipboard" button and paste
+            the context into your AI assistant.
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <script src="script.js"></script>
   </body>
 </html>

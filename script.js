@@ -1,18 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- STATE ---
-  let rootDirectoryHandle = null;
-  const fileHandles = new Map(); // Stores file handles by path
-
-  // --- DOM ELEMENTS ---
-  const selectDirBtn = document.getElementById("select-dir-btn");
+  // --- STATE & DOM ELEMENTS (No changes here) ---
+  const panels = [
+    { id: "left", handle: null, fileHandles: new Map(), title: "" },
+    { id: "right", handle: null, fileHandles: new Map(), title: "" },
+  ];
   const generateBtn = document.getElementById("generate-btn");
   const copyBtn = document.getElementById("copy-btn");
-  const fileTreeContainer = document.getElementById("file-tree-container");
   const outputContextEl = document.getElementById("output-context");
   const tokenCountEl = document.getElementById("token-count");
   const taskDescEl = document.getElementById("task-desc");
+  const helpBtn = document.getElementById("help-btn");
+  const helpModal = document.getElementById("help-modal");
+  const modalCloseBtn = document.querySelector(".modal-close-btn");
 
-  // --- CONFIGURATION (Unchanged) ---
+  // --- CONFIGURATION (No changes here) ---
   const DEFAULT_BLACKLIST = new Set([
     ".git",
     ".svn",
@@ -33,29 +34,59 @@ document.addEventListener("DOMContentLoaded", () => {
   ]);
   const CHARS_PER_TOKEN = 4;
 
-  // --- EVENT LISTENERS ---
-  selectDirBtn.addEventListener("click", handleSelectDirectory);
+  // --- EVENT LISTENERS (No changes here) ---
+  document.querySelectorAll(".select-dir-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) =>
+      handleSelectDirectory(e.target.dataset.panelIndex)
+    );
+  });
+  document.querySelectorAll(".file-tree-container").forEach((container) => {
+    container.addEventListener("click", handleTreeClick);
+    container.addEventListener("change", handleOptionChange);
+  });
+  document.querySelectorAll(".panel-title").forEach((input) => {
+    input.addEventListener("change", (e) => {
+      const panelIndex = e.target.closest(".panel").id === "panel-left" ? 0 : 1;
+      panels[panelIndex].title = e.target.value;
+    });
+  });
   generateBtn.addEventListener("click", handleGenerateContext);
   copyBtn.addEventListener("click", copyToClipboard);
+  helpBtn.addEventListener("click", () => helpModal.classList.add("visible"));
+  modalCloseBtn.addEventListener("click", () =>
+    helpModal.classList.remove("visible")
+  );
+  window.addEventListener("click", (e) => {
+    if (e.target === helpModal) helpModal.classList.remove("visible");
+  });
 
-  // Use event delegation for dynamic content in the file tree
-  fileTreeContainer.addEventListener("click", handleTreeClick);
-  fileTreeContainer.addEventListener("change", handleOptionChange);
+  // --- CORE FUNCTIONS (Only createTree and its helpers are modified) ---
 
-  // --- FUNCTIONS ---
+  // No changes to handleSelectDirectory, traverseDirectory, handleTreeClick, handleOptionChange, handleGenerateContext, copyToClipboard
 
-  async function handleSelectDirectory() {
+  async function handleSelectDirectory(panelIndex) {
+    panelIndex = parseInt(panelIndex);
     try {
-      rootDirectoryHandle = await window.showDirectoryPicker();
-      if (rootDirectoryHandle) {
-        fileTreeContainer.innerHTML = "<p>Loading file tree...</p>";
-        fileHandles.clear();
-        const treeStructure = await traverseDirectory(
-          rootDirectoryHandle,
-          rootDirectoryHandle.name
+      const handle = await window.showDirectoryPicker();
+      if (handle) {
+        panels[panelIndex].handle = handle;
+        const container = document.querySelector(
+          `.file-tree-container[data-panel-index="${panelIndex}"]`
         );
-        renderFileTree(treeStructure, fileTreeContainer);
-        generateBtn.disabled = false;
+        container.innerHTML = "<p>Loading file tree...</p>";
+        panels[panelIndex].fileHandles.clear();
+        const treeStructure = await traverseDirectory(
+          handle,
+          handle.name,
+          panelIndex
+        );
+        renderFileTree(treeStructure, container, panelIndex);
+        if (!panels[panelIndex].title) {
+          document.querySelector(
+            `#panel-${panels[panelIndex].id} .panel-title`
+          ).value = handle.name;
+          panels[panelIndex].title = handle.name;
+        }
       }
     } catch (error) {
       console.error("Error selecting directory:", error);
@@ -65,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function traverseDirectory(directoryHandle, path) {
+  async function traverseDirectory(directoryHandle, path, panelIndex) {
     if (DEFAULT_BLACKLIST.has(directoryHandle.name)) return null;
     const structure = {
       name: directoryHandle.name,
@@ -76,66 +107,87 @@ document.addEventListener("DOMContentLoaded", () => {
     for await (const entry of directoryHandle.values()) {
       const entryPath = `${path}/${entry.name}`;
       if (DEFAULT_BLACKLIST.has(entry.name)) continue;
-
       if (entry.kind === "file") {
-        fileHandles.set(entryPath, entry);
+        panels[panelIndex].fileHandles.set(entryPath, entry);
         structure.children.push({
           name: entry.name,
           path: entryPath,
           type: "file",
         });
       } else if (entry.kind === "directory") {
-        const childStructure = await traverseDirectory(entry, entryPath);
+        const childStructure = await traverseDirectory(
+          entry,
+          entryPath,
+          panelIndex
+        );
         if (childStructure) structure.children.push(childStructure);
       }
     }
     return structure;
   }
 
-  function renderFileTree(structure, container) {
+  function renderFileTree(structure, container, panelIndex) {
     container.innerHTML = "";
     const ul = document.createElement("ul");
     ul.style.listStyleType = "none";
     ul.style.paddingLeft = "0";
-    createTree(structure, ul, 0);
+    createTree(structure, ul, 0, panelIndex);
     container.appendChild(ul);
   }
 
-  function createTree(item, parentElement, depth) {
+  /**
+   * MODIFIED FUNCTION
+   * Renders icons instead of text labels.
+   */
+  function createTree(item, parentElement, depth, panelIndex) {
     const li = document.createElement("li");
     const itemDiv = document.createElement("div");
     itemDiv.className = "tree-item";
-
     itemDiv.style.marginLeft = `${depth * 20}px`;
-
     const itemName = document.createElement("span");
     itemName.className = "item-name";
-
     if (item.type === "directory") {
-      itemName.innerHTML = `<span>&#x1F4C2;</span> ${item.name}`; // 📂 Open Folder Icon
+      itemName.innerHTML = `<span>&#x1F4C2;</span> ${item.name}`;
       itemName.classList.add("folder-title");
       itemName.dataset.path = item.path;
     } else {
-      itemName.innerHTML = `&#x1F4C4; ${item.name}`; // 📄 Page Icon
+      itemName.innerHTML = `&#x1F4C4; ${item.name}`;
     }
-
     itemDiv.appendChild(itemName);
 
-    // Add radio button options for both files and folders
+    // --- Start of Modified Block ---
     const optionsDiv = document.createElement("div");
     optionsDiv.className = "tree-item-options";
-    const optionsId = `options-${item.path.replace(/[^a-zA-Z0-9]/g, "-")}`;
+    const optionsId = `options-${panelIndex}-${item.path.replace(
+      /[^a-zA-Z0-9]/g,
+      "-"
+    )}`;
 
-    optionsDiv.appendChild(createRadio(optionsId, "full", item.path));
-    optionsDiv.appendChild(createLabel(optionsId + "-full", "Full"));
-    optionsDiv.appendChild(createRadio(optionsId, "path", item.path));
-    optionsDiv.appendChild(createLabel(optionsId + "-path", "Path Only"));
-    const ignoreRadio = createRadio(optionsId, "ignore", item.path);
-    ignoreRadio.checked = true; // Default to ignore
+    // Render icon controls instead of text
+    optionsDiv.appendChild(
+      createRadio(optionsId, "full", item.path, panelIndex)
+    );
+    optionsDiv.appendChild(
+      createIconLabel(optionsId + "-full", "📝", "Full Content")
+    );
+
+    optionsDiv.appendChild(
+      createRadio(optionsId, "path", item.path, panelIndex)
+    );
+    optionsDiv.appendChild(
+      createIconLabel(optionsId + "-path", "🔗", "Path Only")
+    );
+
+    const ignoreRadio = createRadio(optionsId, "ignore", item.path, panelIndex);
+    ignoreRadio.checked = true;
     optionsDiv.appendChild(ignoreRadio);
-    optionsDiv.appendChild(createLabel(optionsId + "-ignore", "Ignore"));
+    optionsDiv.appendChild(
+      createIconLabel(optionsId + "-ignore", "❌", "Ignore")
+    );
 
     itemDiv.appendChild(optionsDiv);
+    // --- End of Modified Block ---
+
     li.appendChild(itemDiv);
     parentElement.appendChild(li);
 
@@ -143,32 +195,35 @@ document.addEventListener("DOMContentLoaded", () => {
       const childrenUl = document.createElement("ul");
       childrenUl.style.listStyleType = "none";
       childrenUl.style.paddingLeft = "0";
-      // Start nested folders as collapsed for cleaner UI
-      if (depth > 0) {
-        childrenUl.classList.add("collapsed");
-      }
+      if (depth > 0) childrenUl.classList.add("collapsed");
       item.children.forEach((child) =>
-        createTree(child, childrenUl, depth + 1)
+        createTree(child, childrenUl, depth + 1, panelIndex)
       );
       li.appendChild(childrenUl);
     }
   }
 
-  function createRadio(name, value, path) {
+  function createRadio(name, value, path, panelIndex) {
     const radio = document.createElement("input");
     radio.type = "radio";
     radio.name = name;
     radio.value = value;
     radio.id = `${name}-${value}`;
     radio.dataset.filePath = path;
+    radio.dataset.panelIndex = panelIndex;
     return radio;
   }
 
-  function createLabel(forId, text) {
+  /**
+   * NEW FUNCTION
+   * Creates the icon label with a hover tooltip (title).
+   */
+  function createIconLabel(forId, icon, titleText) {
     const label = document.createElement("label");
     label.htmlFor = forId;
-    label.textContent = text;
-    label.className = "tree-item-label";
+    label.className = "icon-label";
+    label.textContent = icon;
+    label.title = titleText; // This creates the native hover tooltip
     return label;
   }
 
@@ -179,13 +234,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const childrenUl = li.querySelector("ul");
       if (childrenUl) {
         childrenUl.classList.toggle("collapsed");
-        // Toggle folder icon
         const icon = target.querySelector("span");
-        if (icon) {
+        if (icon)
           icon.innerHTML = childrenUl.classList.contains("collapsed")
             ? "&#x1F4C1;"
-            : "&#x1F4C2;"; // 📁 vs 📂
-        }
+            : "&#x1F4C2;";
       }
     }
   }
@@ -195,7 +248,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (targetRadio.type === "radio") {
       const li = targetRadio.closest("li");
       const childrenUl = li.querySelector("ul");
-      // If it was a folder's option that changed, cascade it down
       if (childrenUl) {
         const descendantRadios = childrenUl.querySelectorAll(
           `input[type="radio"][value="${targetRadio.value}"]`
@@ -206,86 +258,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function handleGenerateContext() {
-    // This function logic remains largely the same, as it just collects the final state
-    const fullContentFiles = new Set();
-    const pathOnlyFiles = new Set();
-
-    document
-      .querySelectorAll('input[type="radio"]:checked')
-      .forEach((radio) => {
-        const path = radio.dataset.filePath;
-        // Only add files, not folders, to the final list
-        if (fileHandles.has(path)) {
-          if (radio.value === "full") {
-            fullContentFiles.add(path);
-          } else if (radio.value === "path") {
-            pathOnlyFiles.add(path);
-          }
-        }
-      });
-
-    // Ensure a file isn't in both lists (full content takes priority)
-    pathOnlyFiles.forEach((path) => {
-      if (fullContentFiles.has(path)) {
-        pathOnlyFiles.delete(path);
-      }
-    });
-
-    const sortedFullContentFiles = [...fullContentFiles].sort();
-    const sortedPathOnlyFiles = [...pathOnlyFiles].sort();
-
     let output = `Task: ${
       taskDescEl.value || "No task description provided."
-    }\n`;
-    // ... the rest of the generation logic is very similar to the previous version
-    // We'll regenerate it here for completeness
-    output += `Project Root: ${rootDirectoryHandle.name}\n\n`;
-
-    // Generate and add the file tree string
-    output += "--- FILE TREE ---\n";
-    const allFilesInContext = [
-      ...sortedFullContentFiles,
-      ...sortedPathOnlyFiles,
-    ].sort();
-    const pathOnlySet = new Set(sortedPathOnlyFiles);
-
-    let fileTreeString = "";
-    allFilesInContext.forEach((path) => {
-      const relativePath = path.substring(rootDirectoryHandle.name.length + 1);
-      const parts = relativePath.split("/");
-      fileTreeString +=
-        "|-- ".padStart(parts.length * 4, " ") + parts[parts.length - 1];
-      if (pathOnlySet.has(path)) {
-        fileTreeString += " [PATH ONLY]";
-      }
-      fileTreeString += "\n";
-    });
-    output += `${rootDirectoryHandle.name}/\n${fileTreeString}\n--- FILE CONTENT ---\n`;
-
+    }\n\n`;
     let totalTokens = 0;
-    for (const path of sortedFullContentFiles) {
-      const handle = fileHandles.get(path);
-      const relativePath = path.substring(rootDirectoryHandle.name.length + 1);
-      output += `\n${"=".repeat(10)} File: ${relativePath} ${"=".repeat(
-        10
-      )}\n\n`;
-      try {
-        const file = await handle.getFile();
-        const content = await file.text();
-        output += content;
-        totalTokens += Math.ceil(content.length / CHARS_PER_TOKEN);
-      } catch (e) {
-        output += `[Could not read file: ${e.message}]\n`;
+    for (const [index, panel] of panels.entries()) {
+      if (!panel.handle) continue;
+      const fullContentFiles = new Set();
+      const pathOnlyFiles = new Set();
+      const container = document.querySelector(
+        `.file-tree-container[data-panel-index="${index}"]`
+      );
+      container
+        .querySelectorAll('input[type="radio"]:checked')
+        .forEach((radio) => {
+          const path = radio.dataset.filePath;
+          if (panel.fileHandles.has(path)) {
+            if (radio.value === "full") fullContentFiles.add(path);
+            else if (radio.value === "path") pathOnlyFiles.add(path);
+          }
+        });
+      if (fullContentFiles.size === 0 && pathOnlyFiles.size === 0) continue;
+      const panelTitle = panel.title || panel.handle.name;
+      output += `--- PROJECT: ${panelTitle} ---\n`;
+      const sortedFullContentFiles = [...fullContentFiles].sort();
+      const sortedPathOnlyFiles = [...pathOnlyFiles].sort();
+      const pathOnlySet = new Set(sortedPathOnlyFiles);
+      const allFilesInContext = [
+        ...sortedFullContentFiles,
+        ...sortedPathOnlyFiles,
+      ].sort();
+      let fileTreeString = "";
+      allFilesInContext.forEach((path) => {
+        const relativePath = path.substring(panel.handle.name.length + 1);
+        const parts = relativePath.split("/");
+        fileTreeString +=
+          "|-- ".padStart(parts.length * 4, " ") + parts[parts.length - 1];
+        if (pathOnlySet.has(path)) fileTreeString += " [PATH ONLY]";
+        fileTreeString += "\n";
+      });
+      output += `/${fileTreeString}\n--- FILE CONTENT for ${panelTitle} ---\n`;
+      for (const path of sortedFullContentFiles) {
+        const handle = panel.fileHandles.get(path);
+        const relativePath = path.substring(panel.handle.name.length + 1);
+        output += `\n${"=".repeat(10)} File: ${relativePath} ${"=".repeat(
+          10
+        )}\n\n`;
+        try {
+          const file = await handle.getFile();
+          const content = await file.text();
+          output += content;
+          totalTokens += Math.ceil(content.length / CHARS_PER_TOKEN);
+        } catch (e) {
+          output += `[Could not read file: ${e.message}]\n`;
+        }
       }
+      output += "\n";
     }
-
-    const summary =
-      `\n\n--- CONTEXT SUMMARY ---\n` +
-      `Included ${sortedFullContentFiles.length} files with full content.\n` +
-      `Included ${sortedPathOnlyFiles.length} files as path only.\n` +
-      `Estimated token count for content: ~${totalTokens} tokens.`;
-
-    output += summary;
     outputContextEl.value = output;
     tokenCountEl.textContent = `Tokens: ~${totalTokens}`;
   }

@@ -18,8 +18,9 @@ body {
   padding: 20px;
 }
 
+/* 1. Make the entire app wider */
 .container {
-  max-width: 900px;
+  max-width: 95vw; /* Changed from 900px */
   margin: 0 auto;
   background: var(--container-bg);
   padding: 25px;
@@ -113,12 +114,39 @@ button:disabled {
   margin-right: 15px;
 }
 
+/* 2. Styles for the new Icon-based toggles */
 .tree-item-options {
-  margin-left: auto; /* Pushes options to the right */
+  margin-left: auto;
+  display: flex;
+  gap: 5px; /* Space between icons */
 }
 
+/* Hide the actual radio button circle */
 .tree-item-options input[type="radio"] {
-  margin-left: 10px;
+  display: none;
+}
+
+/* Style for the SELECTED icon. This is the crucial part for UX. */
+.tree-item-options input[type="radio"]:checked + .icon-label {
+  background-color: #e0eaff;
+  /* border-color: var(--primary-color); */
+}
+
+/* Style the label (which now contains the icon) to look like a button */
+.icon-label {
+  cursor: pointer;
+  font-size: 1.2em; /* Makes icons a bit bigger */
+  padding: 4px 6px;
+  border-radius: 5px;
+  transition: background-color 0.2s, transform 0.2s;
+  line-height: 1;
+  display: inline-block;
+  border: 2px solid transparent;
+}
+
+.icon-label:hover {
+  background-color: var(--bg-color);
+  transform: scale(1.1);
 }
 
 .folder-title {
@@ -158,4 +186,146 @@ button:disabled {
   padding: 10px;
   box-sizing: border-box;
   resize: vertical;
+}
+
+.step h2 {
+  font-size: 1.2em; /* Consistent heading size */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.step-number {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  padding: 5px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+}
+
+/* Panels for Side-by-Side View */
+.panels-container {
+  display: flex;
+  gap: 20px;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-title {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Help Modal Styles */
+.help-button {
+  position: absolute;
+  top: 25px;
+  right: 25px;
+  background: none;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.help-button:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.visible {
+  display: flex;
+}
+
+.modal-content {
+  background-color: var(--container-bg);
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+  position: relative;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-close-btn {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.modal-close-btn:hover {
+  color: #333;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.modal-content ul {
+  list-style-position: inside;
+  padding-left: 10px;
+}
+
+.generate-copy-buttons {
+  display: flex;
+  justify-content: space-between; /* Pushes children to opposite ends */
+  align-items: center; /* Vertically aligns them in the middle */
+  margin-bottom: 15px; /* Adds some space below the buttons */
+}
+
+.output-toolbar {
+  display: flex;
+  align-items: center; /* Vertically aligns the button and token count */
+  gap: 15px; /* Creates space between the "Copy" button and the token text */
+}
+
+/* Remove the margin from the old generate button to avoid conflicts */
+#generate-btn {
+  margin: 0;
 }
