@@ -123,7 +123,17 @@ document.addEventListener("DOMContentLoaded", () => {
           handle.name,
           panelIndex
         );
+
+        // Temporarily disable event handlers during initial render
+        const tempHandler = container.onchange;
+        container.onchange = null;
+
         renderFileTree(treeStructure, container, panelIndex);
+
+        // Re-enable event handlers after a brief delay
+        setTimeout(() => {
+          container.onchange = tempHandler;
+        }, 1000);
 
         container.innerHTML += "<p>Analyzing dependencies...</p>";
         await buildDependencyGraph(panelIndex);
@@ -182,11 +192,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const ul = document.createElement("ul");
     ul.style.listStyleType = "none";
     ul.style.paddingLeft = "0";
-    createTree(structure, ul, 0, panelIndex);
+    createTree(structure, ul, 0, panelIndex, true);
     container.appendChild(ul);
   }
 
-  function createTree(item, parentElement, depth, panelIndex) {
+  function createTree(
+    item,
+    parentElement,
+    depth,
+    panelIndex,
+    isInitialRender = true
+  ) {
     const li = document.createElement("li");
     li.className = "tree-item-li";
     const itemDiv = document.createElement("div");
@@ -222,21 +238,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const optionsDiv = document.createElement("div");
     optionsDiv.className = "tree-item-options";
+
+    // Create unique radio group name for each item
     const optionsId = `options-${panelIndex}-${item.path.replace(
       /[^a-zA-Z0-9]/g,
       "-"
     )}`;
 
-    optionsDiv.appendChild(
-      createRadio(optionsId, "full", item.path, panelIndex)
-    );
+    const fullRadio = createRadio(optionsId, "full", item.path, panelIndex);
+    optionsDiv.appendChild(fullRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-full", "📝", "Full Content")
     );
 
-    optionsDiv.appendChild(
-      createRadio(optionsId, "path", item.path, panelIndex)
-    );
+    const pathRadio = createRadio(optionsId, "path", item.path, panelIndex);
+    optionsDiv.appendChild(pathRadio);
     optionsDiv.appendChild(
       createIconLabel(optionsId + "-path", "🔗", "Path Only")
     );
@@ -248,12 +264,16 @@ document.addEventListener("DOMContentLoaded", () => {
       createIconLabel(optionsId + "-ignore", "❌", "Ignore")
     );
 
-    // --- FIX: Manually dispatch the change event for the default checked radio ---
-    // This ensures the initial state is fully registered by all event handlers.
-    ignoreRadio.dispatchEvent(new Event("change", { bubbles: true }));
-
     itemDiv.appendChild(optionsDiv);
     li.appendChild(itemDiv);
+
+    // Don't dispatch change events during initial render
+    if (!isInitialRender) {
+      setTimeout(() => {
+        ignoreRadio.dispatchEvent(new Event("change", { bubbles: true }));
+      }, 1000);
+    }
+
     parentElement.appendChild(li);
 
     if (item.type === "directory" && item.children.length > 0) {
@@ -262,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
       childrenUl.style.paddingLeft = "0";
       if (depth > 0) childrenUl.classList.add("collapsed");
       item.children.forEach((child) =>
-        createTree(child, childrenUl, depth + 1, panelIndex)
+        createTree(child, childrenUl, depth + 1, panelIndex, isInitialRender)
       );
       li.appendChild(childrenUl);
     }
@@ -331,7 +351,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (targetRadio.type === "radio") {
       const li = targetRadio.closest("li");
       const childrenUl = li.querySelector("ul");
-      if (childrenUl) {
+
+      // Only propagate to children if this is a directory
+      if (childrenUl && li.querySelector(".folder-title")) {
         const descendantRadios = childrenUl.querySelectorAll(
           `input[type="radio"][value="${targetRadio.value}"]`
         );

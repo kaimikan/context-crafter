@@ -283,14 +283,17 @@ button:disabled {
 /* --- MODIFIED: Replaced the single rule with three specific, color-coded rules --- */
 .tree-item-options input[value="full"]:checked + .icon-label {
   background-color: #e6ffed; /* Light Green */
+  border: 2px solid #4caf50;
 }
 
 .tree-item-options input[value="path"]:checked + .icon-label {
-  background-color: #fdfbe3; /* Light Blue */
+  background-color: #fdfbe3; /* Light Yellow */
+  border: 2px solid #ffc107;
 }
 
 .tree-item-options input[value="ignore"]:checked + .icon-label {
   background-color: #ffebee; /* Light Red */
+  border: 2px solid #dc3545;
 }
 /* --- END MODIFICATION --- */
 
