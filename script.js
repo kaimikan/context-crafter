@@ -69,15 +69,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function verifyHandlePermission(handle) {
     if (!handle) return false;
-    // Check if permission is already granted
     if ((await handle.queryPermission({ mode: "readwrite" })) === "granted") {
       return true;
     }
-    // Request permission. If granted, returns 'granted'.
     if ((await handle.requestPermission({ mode: "readwrite" })) === "granted") {
       return true;
     }
-    // Permission was denied
     return false;
   }
 
@@ -211,10 +208,35 @@ document.addEventListener("DOMContentLoaded", () => {
   deleteProjectBtn.addEventListener("click", handleDeleteProject);
 
   // --- INITIALIZATION ---
-  initDB().then(() => {
+  async function initializeApp() {
+    await initDB();
     console.log("Database initialized.");
+    await tryAutoLoadPresets();
     updateAllPresetUI();
-  });
+  }
+  initializeApp();
+
+  // --- PRESETS FILE MANAGEMENT ---
+  async function tryAutoLoadPresets() {
+    try {
+      const response = await fetch("./context-crafter-presets.json");
+      if (response.ok) {
+        const loadedPresets = await response.json();
+        if (!loadedPresets.prompts || !loadedPresets.projects) {
+          throw new Error("Invalid preset file format.");
+        }
+        appPresets = loadedPresets;
+        presetsFileStatus.textContent = `Auto-loaded local presets file.`;
+        console.log("Successfully auto-loaded local presets file.");
+      }
+    } catch (err) {
+      console.log(
+        "Local presets file not found or failed to load, starting fresh.",
+        err
+      );
+      presetsFileStatus.textContent = `No presets file loaded.`;
+    }
+  }
 
   // --- PRESETS FILE MANAGEMENT ---
   async function handleLoadPresetsFromFile() {
