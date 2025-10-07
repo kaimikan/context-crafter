@@ -1,0 +1,21 @@
+{
+  "prompts": {
+    "No Canvas": "Do not use Canvas."
+  },
+  "projects": {
+    "Voice of Employees": {
+      "panelConfigs": [
+        {
+          "title": "voe-client",
+          "rootName": "voe-client",
+          "handleKey": "project-Voice of Employees-panel-0"
+        },
+        {
+          "title": "voe-server",
+          "rootName": "voe-server",
+          "handleKey": "project-Voice of Employees-panel-1"
+        }
+      ]
+    }
+  }
+}

@@ -14,7 +14,10 @@
           Select project folders and choose files to generate a context prompt
           for your AI assistant.
         </p>
-        <button id="help-btn" class="help-button">? Help</button>
+        <div class="header-buttons">
+          <button id="presets-btn" class="header-button">⚙️ Presets</button>
+          <button id="help-btn" class="header-button">? Help</button>
+        </div>
       </header>
 
       <section class="step">
@@ -32,7 +35,6 @@
               >Only show highlighted</label
             >
           </div>
-
           <div class="toggle-switch">
             <input
               type="checkbox"
@@ -41,7 +43,6 @@
             />
             <label for="show-only-included-toggle">Only show included</label>
           </div>
-
           <div class="mass-action-controls">
             <span style="font-weight: bold; margin-right: 5px"
               >For Highlighted:</span
@@ -70,9 +71,18 @@
               class="panel-title"
               placeholder="e.g., Frontend"
             />
-            <button class="select-dir-btn" data-panel-index="0">
-              Select Folder
-            </button>
+            <div class="panel-buttons">
+              <button class="select-dir-btn" data-panel-index="0">
+                Select Folder
+              </button>
+              <button
+                class="refresh-dir-btn"
+                data-panel-index="0"
+                style="display: none"
+              >
+                🔄 Refresh
+              </button>
+            </div>
             <div class="file-tree-container" data-panel-index="0">
               <p class="placeholder">Left panel is empty...</p>
             </div>
@@ -83,9 +93,18 @@
               class="panel-title"
               placeholder="e.g., Backend"
             />
-            <button class="select-dir-btn" data-panel-index="1">
-              Select Folder
-            </button>
+            <div class="panel-buttons">
+              <button class="select-dir-btn" data-panel-index="1">
+                Select Folder
+              </button>
+              <button
+                class="refresh-dir-btn"
+                data-panel-index="1"
+                style="display: none"
+              >
+                🔄 Refresh
+              </button>
+            </div>
             <div class="file-tree-container" data-panel-index="1">
               <p class="placeholder">Right panel is empty...</p>
             </div>
@@ -94,7 +113,17 @@
       </section>
 
       <section class="step">
-        <h2><span class="step-number">2.</span> Describe Your Task</h2>
+        <h2>
+          <span class="step-number">2.</span> Add Specific Files (Optional)
+        </h2>
+        <div class="additional-files-controls">
+          <button id="add-files-btn">Add Files</button>
+        </div>
+        <ul id="additional-files-list"></ul>
+      </section>
+
+      <section class="step">
+        <h2><span class="step-number">3.</span> Describe Your Task</h2>
         <input
           type="text"
           id="task-desc"
@@ -103,7 +132,7 @@
       </section>
 
       <section class="step">
-        <h2><span class="step-number">3.</span> Generate & Copy Context</h2>
+        <h2><span class="step-number">4.</span> Generate & Copy Context</h2>
         <div class="generate-copy-buttons">
           <button id="generate-btn">Generate Context</button>
           <div class="output-toolbar">
@@ -119,46 +148,76 @@
       </section>
     </main>
 
+    <div id="presets-modal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close-btn">&times;</span>
+        <h3>Presets & Configuration</h3>
+        <div class="preset-file-management">
+          <button id="load-presets-btn">Load Presets from File</button>
+          <button id="save-presets-btn">Save Presets to File</button>
+          <span id="presets-file-status">No presets file loaded.</span>
+        </div>
+        <hr />
+        <div class="presets-container">
+          <div class="preset-group">
+            <label for="preset-prompt-select"
+              ><strong>Preset Prompts:</strong></label
+            >
+            <select id="preset-prompt-select"></select>
+            <textarea
+              id="preset-prompt-text"
+              placeholder="Enter a prompt rule..."
+            ></textarea>
+            <div class="preset-controls">
+              <button id="save-prompt-btn">Save</button>
+              <button id="delete-prompt-btn">Delete</button>
+            </div>
+          </div>
+          <div class="preset-group">
+            <label for="project-preset-select"
+              ><strong>Pre-defined Projects:</strong></label
+            >
+            <select id="project-preset-select"></select>
+            <div class="preset-controls">
+              <button id="save-project-btn">Save Current Folders</button>
+              <button id="load-project-btn">Load Selected Project</button>
+              <button id="delete-project-btn">Delete Selected</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="help-modal" class="modal">
       <div class="modal-content">
         <span class="modal-close-btn">&times;</span>
         <h3>How to Use Context Crafter</h3>
         <ul>
           <li>
-            <strong>Select Folders:</strong> Click "Select Folder" in either
-            panel to load a local project folder (e.g., your frontend or
-            backend).
+            <strong>Presets:</strong> Use the "⚙️ Presets" button to load, save,
+            and manage your configurations in a JSON file.
           </li>
           <li>
-            <strong>Choose Files:</strong> For each file and folder in the tree,
-            choose an option:
-            <ul>
-              <li>
-                <strong>Full:</strong> Includes the file's entire content.
-              </li>
-              <li>
-                <strong>Path Only:</strong> Includes only the file's name and
-                path, saving tokens.
-              </li>
-              <li><strong>Ignore:</strong> Excludes the file completely.</li>
-            </ul>
+            <strong>Select Folders:</strong> Click "Select Folder" to load a
+            project folder.
           </li>
           <li>
-            <strong>Use Folder Actions:</strong> Setting an option for a folder
-            (e.g., setting `src` to "Full") will apply that setting to all files
-            and subfolders within it.
+            <strong>Refresh Folder:</strong> If you change files externally,
+            click "Refresh".
           </li>
           <li>
-            <strong>Describe Your Task:</strong> Briefly explain what you're
-            trying to achieve.
+            <strong>Add Specific Files:</strong> Use this section to include any
+            individual files from outside your main project folders.
           </li>
           <li>
-            <strong>Generate:</strong> Click "Generate Context" to compile
-            everything into a single, clean prompt in the text area below.
+            <strong>Choose Files:</strong> Click icons to include content (📝),
+            path only (🔗), or ignore (❌). Clicking an active icon again will
+            ignore it.
           </li>
+          <li><strong>Describe Your Task:</strong> Explain your goal.</li>
           <li>
-            <strong>Copy:</strong> Use the "Copy to Clipboard" button and paste
-            the context into your AI assistant.
+            <strong>Generate & Copy:</strong> Compile everything and copy it to
+            your clipboard.
           </li>
         </ul>
       </div>
