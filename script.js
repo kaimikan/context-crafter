@@ -1067,37 +1067,49 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function buildFileTreeString(panel, paths) {
-    const fileTree = {};
+    const root = {};
+    // Build the hierarchical object representation of the file tree
     paths.forEach((path) => {
       const relativePath = path.substring(panel.handle.name.length + 1);
-      let currentNode = fileTree;
-      relativePath.split("/").forEach((part, i, arr) => {
-        if (i === arr.length - 1) currentNode[part] = { _isFile: true };
-        else currentNode = currentNode[part] = currentNode[part] || {};
+      let current = root;
+      relativePath.split("/").forEach((part) => {
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
       });
     });
+
     let str = "";
+    // Recursively print the tree object into a string
     function printTree(node, prefix = "") {
-      const entries = Object.keys(node).sort((a, b) => {
-        if (a === "_isFile") return 1;
-        if (b === "_isFile") return -1;
-        const aIsFile = node[a]._isFile;
-        const bIsFile = node[b]._isFile;
-        if (aIsFile && !bIsFile) return 1;
-        if (!aIsFile && bIsFile) return -1;
-        return a.localeCompare(b);
+      const entries = Object.keys(node);
+      // Sort entries to have directories before files, then alphabetically
+      const sortedEntries = entries.sort((a, b) => {
+        const aIsDir = Object.keys(node[a]).length > 0;
+        const bIsDir = Object.keys(node[b]).length > 0;
+        if (aIsDir && !bIsDir) return -1; // a (directory) comes first
+        if (!aIsDir && bIsDir) return 1; // b (directory) comes first
+        return a.localeCompare(b); // Alphabetical sort for same types
       });
-      entries.forEach((entry, i) => {
-        if (entry === "_isFile") return;
-        const isLast = i === entries.filter((e) => e !== "_isFile").length - 1;
+
+      sortedEntries.forEach((entry, i) => {
+        const isLast = i === sortedEntries.length - 1;
+        const isDir = Object.keys(node[entry]).length > 0;
+
+        // Append the current entry to the string
         str += `${prefix}${isLast ? "└── " : "├── "}${entry}${
-          node[entry]._isFile ? "" : "/"
+          isDir ? "/" : ""
         }\n`;
-        if (!node[entry]._isFile)
-          printTree(node[entry], `${prefix}${isLast ? "    " : "│   "}`);
+
+        // If it's a directory, recurse into it with an updated prefix
+        if (isDir) {
+          printTree(node[entry], prefix + (isLast ? "    " : "│   "));
+        }
       });
     }
-    printTree(fileTree);
+
+    printTree(root);
     return str;
   }
 

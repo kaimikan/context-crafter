@@ -1,6 +1,7 @@
 {
   "prompts": {
-    "No Canvas": "Do not use Canvas."
+    "No Canvas": "Do not use Canvas.",
+    "No Canvas + Extra": "Do not use Canvas.\n\nDo not rush into writing the code initially and give me an implementation plan if you think that you have enough information to move onto the development BUT not before asking me if I agree with the plan.\n\nIf you think you need more context, please respond with saying it and where it is necessary and I will provide it.\n\nWhen it comes to code blocks, please try to not send too many at once, and keep the code blocks focused on only the relevant parts that were changed/added/removed. Do not rush into sending code blocks for more than one major functionality at once."
   },
   "projects": {
     "Voice of Employees": {
