@@ -1,22 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   // --- STATE & DOM ELEMENTS ---
-  const panels = [
-    {
-      id: "left",
-      handle: null,
-      fileHandles: new Map(),
-      dependencies: new Map(),
-      dependents: new Map(),
-    },
-    {
-      id: "right",
-      handle: null,
-      fileHandles: new Map(),
-      dependencies: new Map(),
-      dependents: new Map(),
-    },
-  ];
+  const panels = []; // Panels are now created dynamically
   const fileHighlightStates = new Map();
+  const MAX_PANELS = 6;
   let additionalFileHandles = new Map();
   let presetsFileHandle = null;
   let appPresets = { prompts: {}, projects: {} };
@@ -120,6 +106,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const loadProjectBtn = document.getElementById("load-project-btn");
   const deleteProjectBtn = document.getElementById("delete-project-btn");
 
+  // Quick preset UI (main interface)
+  const quickPromptSelect = document.getElementById("quick-prompt-select");
+  const quickPromptStatus = document.getElementById("quick-prompt-status");
+  const quickProjectSelect = document.getElementById("quick-project-select");
+  const quickLoadProjectBtn = document.getElementById("quick-load-project-btn");
+  const quickSaveProjectBtn = document.getElementById("quick-save-project-btn");
+
+  // Track unsaved changes in modal
+  let modalPromptOriginalValue = "";
+  let modalPromptOriginalSelection = "";
+
   const DEFAULT_BLACKLIST = new Set([
     ".git",
     ".svn",
@@ -140,43 +137,207 @@ document.addEventListener("DOMContentLoaded", () => {
   ]);
   const CHARS_PER_TOKEN = 4;
 
-  // --- EVENT LISTENERS ---
-  document.querySelectorAll(".select-dir-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) =>
-      handleSelectDirectory(e.target.dataset.panelIndex)
-    );
-  });
-  document.querySelectorAll(".refresh-dir-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) =>
-      handleRefreshDirectory(e.target.dataset.panelIndex)
-    );
-  });
-  document.querySelectorAll(".file-tree-container").forEach((container) => {
-    container.addEventListener("click", handleTreeClick);
-    container.addEventListener("change", handleOptionChange);
-    container.addEventListener("click", handleIconToggle);
-  });
-  document.querySelectorAll(".panel-title").forEach((input) => {
-    input.addEventListener("change", (e) => {
-      const panelIndex = e.target.closest(".panel").id === "panel-left" ? 0 : 1;
-      panels[panelIndex].title = e.target.value;
+  // Dynamic panels container
+  const panelsContainer = document.getElementById("panels-container");
+  const addPanelBtn = document.getElementById("add-panel-btn");
+
+  // --- DYNAMIC PANEL MANAGEMENT ---
+  function createPanelState(index) {
+    return {
+      id: `panel-${index}`,
+      handle: null,
+      fileHandles: new Map(),
+      dependencies: new Map(),
+      dependents: new Map(),
+      title: "",
+    };
+  }
+
+  function createPanelElement(index) {
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.id = `panel-${index}`;
+    panel.dataset.panelIndex = index;
+
+    panel.innerHTML = `
+      <div class="panel-header">
+        <input type="text" class="panel-title" placeholder="e.g., Project ${index + 1}" />
+        <button class="remove-panel-btn" data-panel-index="${index}" title="Remove panel">✕</button>
+      </div>
+      <div class="panel-buttons">
+        <button class="select-dir-btn" data-panel-index="${index}">Select Folder</button>
+        <button class="refresh-dir-btn" data-panel-index="${index}" style="display: none">🔄 Refresh</button>
+      </div>
+      <div class="file-tree-container" data-panel-index="${index}">
+        <p class="placeholder">Panel ${index + 1} is empty...</p>
+      </div>
+    `;
+
+    return panel;
+  }
+
+  function addPanel() {
+    if (panels.length >= MAX_PANELS) {
+      alert(`Maximum of ${MAX_PANELS} panels allowed.`);
+      return null;
+    }
+
+    const index = panels.length;
+    const panelState = createPanelState(index);
+    panels.push(panelState);
+
+    const panelElement = createPanelElement(index);
+    panelsContainer.appendChild(panelElement);
+
+    updateRemoveButtonsState();
+    return index;
+  }
+
+  function removePanel(index) {
+    if (panels.length <= 1) {
+      alert("At least one panel must remain.");
+      return;
+    }
+
+    // Clear panel state
+    clearPanelState(index);
+
+    // Remove from DOM
+    const panelElement = document.getElementById(`panel-${index}`);
+    if (panelElement) {
+      panelElement.remove();
+    }
+
+    // Remove from panels array
+    panels.splice(index, 1);
+
+    // Re-index remaining panels
+    reindexPanels();
+    updateRemoveButtonsState();
+  }
+
+  function reindexPanels() {
+    panels.forEach((panel, newIndex) => {
+      const oldId = panel.id;
+      panel.id = `panel-${newIndex}`;
+
+      const panelElement = panelsContainer.children[newIndex];
+      if (panelElement) {
+        panelElement.id = `panel-${newIndex}`;
+        panelElement.dataset.panelIndex = newIndex;
+
+        // Update all data-panel-index attributes within this panel
+        panelElement.querySelectorAll("[data-panel-index]").forEach((el) => {
+          el.dataset.panelIndex = newIndex;
+        });
+
+        // Update placeholder text
+        const placeholder = panelElement.querySelector(".placeholder");
+        if (placeholder) {
+          placeholder.textContent = `Panel ${newIndex + 1} is empty...`;
+        }
+
+        // Update title placeholder
+        const titleInput = panelElement.querySelector(".panel-title");
+        if (titleInput && !titleInput.value) {
+          titleInput.placeholder = `e.g., Project ${newIndex + 1}`;
+        }
+      }
     });
+  }
+
+  function updateRemoveButtonsState() {
+    const removeButtons = document.querySelectorAll(".remove-panel-btn");
+    removeButtons.forEach((btn) => {
+      btn.disabled = panels.length <= 1;
+    });
+  }
+
+  function initializeDefaultPanels() {
+    // Create 2 default panels
+    addPanel();
+    addPanel();
+  }
+
+  // --- EVENT LISTENERS ---
+  // Event delegation for dynamically created panels
+  panelsContainer.addEventListener("click", (e) => {
+    const target = e.target;
+
+    // Handle select directory button
+    if (target.classList.contains("select-dir-btn")) {
+      handleSelectDirectory(target.dataset.panelIndex);
+      return;
+    }
+
+    // Handle refresh directory button
+    if (target.classList.contains("refresh-dir-btn")) {
+      handleRefreshDirectory(target.dataset.panelIndex);
+      return;
+    }
+
+    // Handle remove panel button
+    if (target.classList.contains("remove-panel-btn")) {
+      const index = parseInt(target.dataset.panelIndex);
+      if (confirm(`Remove Panel ${index + 1}? This will clear all its contents.`)) {
+        removePanel(index);
+      }
+      return;
+    }
+
+    // Handle tree clicks (folder toggle and dependency buttons)
+    const treeContainer = target.closest(".file-tree-container");
+    if (treeContainer) {
+      handleTreeClick(e);
+      handleIconToggle(e);
+    }
   });
+
+  panelsContainer.addEventListener("change", (e) => {
+    const target = e.target;
+
+    // Handle panel title change
+    if (target.classList.contains("panel-title")) {
+      const panelElement = target.closest(".panel");
+      const panelIndex = parseInt(panelElement.dataset.panelIndex);
+      panels[panelIndex].title = target.value;
+      return;
+    }
+
+    // Handle radio button changes in file tree
+    const treeContainer = target.closest(".file-tree-container");
+    if (treeContainer) {
+      handleOptionChange(e);
+    }
+  });
+
+  // Add panel button
+  addPanelBtn.addEventListener("click", addPanel);
 
   generateBtn.addEventListener("click", handleGenerateContext);
   copyBtn.addEventListener("click", copyToClipboard);
   helpBtn.addEventListener("click", () => helpModal.classList.add("visible"));
-  presetsBtn.addEventListener("click", () =>
-    presetsModal.classList.add("visible")
-  );
+  presetsBtn.addEventListener("click", () => {
+    captureModalOriginalState();
+    presetsModal.classList.add("visible");
+  });
   document.querySelectorAll(".modal-close-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      btn.closest(".modal").classList.remove("visible");
+      const modal = btn.closest(".modal");
+      if (modal.id === "presets-modal") {
+        tryClosePresetsModal();
+      } else {
+        modal.classList.remove("visible");
+      }
     });
   });
   window.addEventListener("click", (e) => {
     if (e.target.classList.contains("modal")) {
-      e.target.classList.remove("visible");
+      if (e.target.id === "presets-modal") {
+        tryClosePresetsModal();
+      } else {
+        e.target.classList.remove("visible");
+      }
     }
   });
 
@@ -207,10 +368,33 @@ document.addEventListener("DOMContentLoaded", () => {
   loadProjectBtn.addEventListener("click", handleLoadProject);
   deleteProjectBtn.addEventListener("click", handleDeleteProject);
 
+  // Quick preset controls
+  quickPromptSelect.addEventListener("change", handleQuickPromptChange);
+  quickProjectSelect.addEventListener("change", () => {
+    // Sync with modal dropdown
+    projectPresetSelect.value = quickProjectSelect.value;
+  });
+  quickLoadProjectBtn.addEventListener("click", () => {
+    if (!quickProjectSelect.value) {
+      return alert("Please select a project to load.");
+    }
+    projectPresetSelect.value = quickProjectSelect.value;
+    handleLoadProject();
+  });
+  quickSaveProjectBtn.addEventListener("click", handleSaveProject);
+
+  // Track changes in modal for unsaved warning
+  presetPromptText.addEventListener("input", updateModalDirtyState);
+  presetPromptSelect.addEventListener("change", () => {
+    handleLoadPrompt();
+    updateModalDirtyState();
+  });
+
   // --- INITIALIZATION ---
   async function initializeApp() {
     await initDB();
     console.log("Database initialized.");
+    initializeDefaultPanels();
     await tryAutoLoadPresets();
     updateAllPresetUI();
   }
@@ -295,6 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateAllPresetUI() {
+    // Update modal prompt dropdown
     presetPromptSelect.innerHTML =
       '<option value="">-- Select a prompt --</option>';
     Object.keys(appPresets.prompts).forEach((name) => {
@@ -302,11 +487,96 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     presetPromptText.value = "";
 
+    // Update modal project dropdown
     projectPresetSelect.innerHTML =
       '<option value="">-- Select a project --</option>';
     Object.keys(appPresets.projects).forEach((name) => {
       projectPresetSelect.add(new Option(name, name));
     });
+
+    // Update quick prompt dropdown (preserve current selection if still valid)
+    const currentQuickPrompt = quickPromptSelect.value;
+    quickPromptSelect.innerHTML = '<option value="">-- None --</option>';
+    Object.keys(appPresets.prompts).forEach((name) => {
+      quickPromptSelect.add(new Option(name, name));
+    });
+    if (currentQuickPrompt && appPresets.prompts[currentQuickPrompt]) {
+      quickPromptSelect.value = currentQuickPrompt;
+    }
+
+    // Update quick project dropdown (preserve current selection if still valid)
+    const currentQuickProject = quickProjectSelect.value;
+    quickProjectSelect.innerHTML =
+      '<option value="">-- Select a saved project --</option>';
+    Object.keys(appPresets.projects).forEach((name) => {
+      quickProjectSelect.add(new Option(name, name));
+    });
+    if (currentQuickProject && appPresets.projects[currentQuickProject]) {
+      quickProjectSelect.value = currentQuickProject;
+    }
+
+    // Reset modal dirty state
+    modalPromptOriginalValue = "";
+    modalPromptOriginalSelection = "";
+  }
+
+  // --- QUICK PRESET HANDLERS ---
+  function handleQuickPromptChange() {
+    const name = quickPromptSelect.value;
+    if (name && appPresets.prompts[name]) {
+      quickPromptStatus.textContent = "✓ Applied";
+      quickPromptStatus.className = "preset-status active";
+      // Also sync with modal
+      presetPromptSelect.value = name;
+      presetPromptText.value = appPresets.prompts[name];
+    } else {
+      quickPromptStatus.textContent = "";
+      quickPromptStatus.className = "preset-status";
+      presetPromptSelect.value = "";
+      presetPromptText.value = "";
+    }
+  }
+
+  function getActivePromptText() {
+    const name = quickPromptSelect.value;
+    if (name && appPresets.prompts[name]) {
+      return appPresets.prompts[name];
+    }
+    return presetPromptText.value.trim();
+  }
+
+  // --- MODAL UNSAVED CHANGES TRACKING ---
+  function updateModalDirtyState() {
+    const currentSelection = presetPromptSelect.value;
+    const currentText = presetPromptText.value;
+
+    // Check if we have unsaved changes
+    const hasChanges = currentText !== modalPromptOriginalValue ||
+                       currentSelection !== modalPromptOriginalSelection;
+
+    // Visual indicator could be added here if needed
+    presetsModal.dataset.dirty = hasChanges ? "true" : "false";
+  }
+
+  function captureModalOriginalState() {
+    modalPromptOriginalSelection = presetPromptSelect.value;
+    modalPromptOriginalValue = presetPromptText.value;
+    presetsModal.dataset.dirty = "false";
+  }
+
+  function hasUnsavedModalChanges() {
+    return presetsModal.dataset.dirty === "true";
+  }
+
+  function tryClosePresetsModal() {
+    if (hasUnsavedModalChanges()) {
+      const confirmClose = confirm(
+        "You have unsaved changes in the prompt editor. Close without saving?"
+      );
+      if (!confirmClose) return false;
+    }
+    presetsModal.classList.remove("visible");
+    return true;
   }
 
   // --- PRESETS LOGIC ---
@@ -379,6 +649,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const projectConfig = appPresets.projects[name];
     if (!projectConfig) return alert("Could not find project data.");
 
+    const requiredPanels = projectConfig.panelConfigs.length;
+
+    // Adjust panel count to match saved project
+    while (panels.length < requiredPanels) {
+      addPanel();
+    }
+    while (panels.length > requiredPanels && panels.length > 1) {
+      // Remove panels from the end without confirmation
+      const index = panels.length - 1;
+      clearPanelState(index);
+      const panelElement = document.getElementById(`panel-${index}`);
+      if (panelElement) panelElement.remove();
+      panels.splice(index, 1);
+    }
+    reindexPanels();
+    updateRemoveButtonsState();
+
     let allPermissionsGranted = true;
     for (let i = 0; i < projectConfig.panelConfigs.length; i++) {
       const panelConfig = projectConfig.panelConfigs[i];
@@ -388,6 +675,14 @@ document.addEventListener("DOMContentLoaded", () => {
           const permissionGranted = await verifyHandlePermission(handle);
           if (permissionGranted) {
             await loadDirectoryIntoPanel(i, handle);
+            // Restore title if saved
+            if (panelConfig.title) {
+              panels[i].title = panelConfig.title;
+              const titleInput = document.querySelector(
+                `#panel-${i} .panel-title`
+              );
+              if (titleInput) titleInput.value = panelConfig.title;
+            }
           } else {
             allPermissionsGranted = false;
             alert(
@@ -484,7 +779,11 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleRefreshDirectory(panelIndex) {
     const panel = panels[panelIndex];
     if (panel.handle) {
+      // Capture current selections before refresh
+      const savedSelections = captureSelectionState(panelIndex);
       await loadDirectoryIntoPanel(panelIndex, panel.handle);
+      // Restore selections after tree is rebuilt
+      restoreSelectionState(panelIndex, savedSelections);
     } else {
       alert("No folder selected to refresh. Please select a folder first.");
     }
@@ -515,7 +814,7 @@ document.addEventListener("DOMContentLoaded", () => {
     applyViewFilters();
 
     const panelTitleInput = document.querySelector(
-      `#panel-${panel.id} .panel-title`
+      `#${panel.id} .panel-title`
     );
     panelTitleInput.value = directoryHandle.name;
     panel.title = directoryHandle.name;
@@ -590,6 +889,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (item.type === "directory") {
       itemName.innerHTML = `<span>&#x1F4C2;</span> ${item.name}`;
       itemName.classList.add("folder-title");
+      itemName.title = item.name;
     } else {
       const depBtn = document.createElement("span");
       depBtn.className = "dep-toggle-btn dep-btn";
@@ -603,7 +903,11 @@ document.addEventListener("DOMContentLoaded", () => {
       dependentBtn.textContent = "[↓U]";
       itemName.appendChild(dependentBtn);
 
-      itemName.append(` 📄 ${item.name}`);
+      const fileNameSpan = document.createElement("span");
+      fileNameSpan.className = "file-name-text";
+      fileNameSpan.textContent = ` 📄 ${item.name}`;
+      fileNameSpan.title = item.name;
+      itemName.appendChild(fileNameSpan);
     }
     itemDiv.appendChild(itemName);
 
@@ -963,6 +1267,43 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.title = "";
   }
 
+  function captureSelectionState(panelIndex) {
+    const panel = panels[panelIndex];
+    const selections = new Map();
+    if (!panel || !panel.handle) return selections;
+
+    const rootName = panel.handle.name;
+    document
+      .querySelectorAll(
+        `.file-tree-container[data-panel-index="${panelIndex}"] input[type="radio"]:checked`
+      )
+      .forEach((radio) => {
+        const fullPath = radio.dataset.filePath;
+        // Store relative path (without root folder name)
+        const relativePath = fullPath.substring(rootName.length + 1);
+        if (relativePath) {
+          selections.set(relativePath, radio.value);
+        }
+      });
+    return selections;
+  }
+
+  function restoreSelectionState(panelIndex, selections) {
+    const panel = panels[panelIndex];
+    if (!panel || !panel.handle || selections.size === 0) return;
+
+    const rootName = panel.handle.name;
+    selections.forEach((value, relativePath) => {
+      const fullPath = `${rootName}/${relativePath}`;
+      const radio = document.querySelector(
+        `.file-tree-container[data-panel-index="${panelIndex}"] input[type="radio"][data-file-path="${CSS.escape(fullPath)}"][value="${value}"]`
+      );
+      if (radio) {
+        radio.checked = true;
+      }
+    });
+  }
+
   function clearAllHighlights() {
     fileHighlightStates.clear();
     document
@@ -994,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- CONTEXT GENERATION ---
   async function handleGenerateContext() {
-    const presetPrompt = presetPromptText.value.trim();
+    const presetPrompt = getActivePromptText();
     let output = "";
     if (presetPrompt) output += `${presetPrompt}\n\n---\n\n`;
     output += `Task: ${
@@ -1067,37 +1408,49 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function buildFileTreeString(panel, paths) {
-    const fileTree = {};
+    const root = {};
+    // Build the hierarchical object representation of the file tree
     paths.forEach((path) => {
       const relativePath = path.substring(panel.handle.name.length + 1);
-      let currentNode = fileTree;
-      relativePath.split("/").forEach((part, i, arr) => {
-        if (i === arr.length - 1) currentNode[part] = { _isFile: true };
-        else currentNode = currentNode[part] = currentNode[part] || {};
+      let current = root;
+      relativePath.split("/").forEach((part) => {
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
       });
     });
+
     let str = "";
+    // Recursively print the tree object into a string
     function printTree(node, prefix = "") {
-      const entries = Object.keys(node).sort((a, b) => {
-        if (a === "_isFile") return 1;
-        if (b === "_isFile") return -1;
-        const aIsFile = node[a]._isFile;
-        const bIsFile = node[b]._isFile;
-        if (aIsFile && !bIsFile) return 1;
-        if (!aIsFile && bIsFile) return -1;
-        return a.localeCompare(b);
+      const entries = Object.keys(node);
+      // Sort entries to have directories before files, then alphabetically
+      const sortedEntries = entries.sort((a, b) => {
+        const aIsDir = Object.keys(node[a]).length > 0;
+        const bIsDir = Object.keys(node[b]).length > 0;
+        if (aIsDir && !bIsDir) return -1; // a (directory) comes first
+        if (!aIsDir && bIsDir) return 1; // b (directory) comes first
+        return a.localeCompare(b); // Alphabetical sort for same types
       });
-      entries.forEach((entry, i) => {
-        if (entry === "_isFile") return;
-        const isLast = i === entries.filter((e) => e !== "_isFile").length - 1;
+
+      sortedEntries.forEach((entry, i) => {
+        const isLast = i === sortedEntries.length - 1;
+        const isDir = Object.keys(node[entry]).length > 0;
+
+        // Append the current entry to the string
         str += `${prefix}${isLast ? "└── " : "├── "}${entry}${
-          node[entry]._isFile ? "" : "/"
+          isDir ? "/" : ""
         }\n`;
-        if (!node[entry]._isFile)
-          printTree(node[entry], `${prefix}${isLast ? "    " : "│   "}`);
+
+        // If it's a directory, recurse into it with an updated prefix
+        if (isDir) {
+          printTree(node[entry], prefix + (isLast ? "    " : "│   "));
+        }
       });
     }
-    printTree(fileTree);
+
+    printTree(root);
     return str;
   }
 

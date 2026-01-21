@@ -22,6 +22,14 @@
 
       <section class="step">
         <h2><span class="step-number">1.</span> Select Project Folders</h2>
+        <div class="controls quick-project-section">
+          <label for="quick-project-select"><strong>Quick Load Project:</strong></label>
+          <select id="quick-project-select">
+            <option value="">-- Select a saved project --</option>
+          </select>
+          <button id="quick-load-project-btn">Load</button>
+          <button id="quick-save-project-btn" class="secondary-btn">Save Current</button>
+        </div>
         <div class="controls view-controls">
           <button id="expand-all-btn">Expand All</button>
           <button id="collapse-all-btn">Collapse All</button>
@@ -64,51 +72,11 @@
           <button id="search-btn">Search</button>
           <button id="clear-search-btn">Clear</button>
         </div>
-        <div class="panels-container">
-          <div class="panel" id="panel-left">
-            <input
-              type="text"
-              class="panel-title"
-              placeholder="e.g., Frontend"
-            />
-            <div class="panel-buttons">
-              <button class="select-dir-btn" data-panel-index="0">
-                Select Folder
-              </button>
-              <button
-                class="refresh-dir-btn"
-                data-panel-index="0"
-                style="display: none"
-              >
-                🔄 Refresh
-              </button>
-            </div>
-            <div class="file-tree-container" data-panel-index="0">
-              <p class="placeholder">Left panel is empty...</p>
-            </div>
+        <div class="panels-wrapper">
+          <div class="panels-container" id="panels-container">
+            <!-- Panels are generated dynamically by JavaScript -->
           </div>
-          <div class="panel" id="panel-right">
-            <input
-              type="text"
-              class="panel-title"
-              placeholder="e.g., Backend"
-            />
-            <div class="panel-buttons">
-              <button class="select-dir-btn" data-panel-index="1">
-                Select Folder
-              </button>
-              <button
-                class="refresh-dir-btn"
-                data-panel-index="1"
-                style="display: none"
-              >
-                🔄 Refresh
-              </button>
-            </div>
-            <div class="file-tree-container" data-panel-index="1">
-              <p class="placeholder">Right panel is empty...</p>
-            </div>
-          </div>
+          <button id="add-panel-btn" class="add-panel-btn">+ Add Panel</button>
         </div>
       </section>
 
@@ -124,6 +92,13 @@
 
       <section class="step">
         <h2><span class="step-number">3.</span> Describe Your Task</h2>
+        <div class="controls quick-prompt-section">
+          <label for="quick-prompt-select"><strong>Prompt Preset:</strong></label>
+          <select id="quick-prompt-select">
+            <option value="">-- None --</option>
+          </select>
+          <span id="quick-prompt-status" class="preset-status"></span>
+        </div>
         <input
           type="text"
           id="task-desc"
