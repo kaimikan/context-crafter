@@ -22,6 +22,14 @@
 
       <section class="step">
         <h2><span class="step-number">1.</span> Select Project Folders</h2>
+        <div class="controls quick-project-section">
+          <label for="quick-project-select"><strong>Quick Load Project:</strong></label>
+          <select id="quick-project-select">
+            <option value="">-- Select a saved project --</option>
+          </select>
+          <button id="quick-load-project-btn">Load</button>
+          <button id="quick-save-project-btn" class="secondary-btn">Save Current</button>
+        </div>
         <div class="controls view-controls">
           <button id="expand-all-btn">Expand All</button>
           <button id="collapse-all-btn">Collapse All</button>
@@ -84,6 +92,13 @@
 
       <section class="step">
         <h2><span class="step-number">3.</span> Describe Your Task</h2>
+        <div class="controls quick-prompt-section">
+          <label for="quick-prompt-select"><strong>Prompt Preset:</strong></label>
+          <select id="quick-prompt-select">
+            <option value="">-- None --</option>
+          </select>
+          <span id="quick-prompt-status" class="preset-status"></span>
+        </div>
         <input
           type="text"
           id="task-desc"

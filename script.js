@@ -106,6 +106,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const loadProjectBtn = document.getElementById("load-project-btn");
   const deleteProjectBtn = document.getElementById("delete-project-btn");
 
+  // Quick preset UI (main interface)
+  const quickPromptSelect = document.getElementById("quick-prompt-select");
+  const quickPromptStatus = document.getElementById("quick-prompt-status");
+  const quickProjectSelect = document.getElementById("quick-project-select");
+  const quickLoadProjectBtn = document.getElementById("quick-load-project-btn");
+  const quickSaveProjectBtn = document.getElementById("quick-save-project-btn");
+
+  // Track unsaved changes in modal
+  let modalPromptOriginalValue = "";
+  let modalPromptOriginalSelection = "";
+
   const DEFAULT_BLACKLIST = new Set([
     ".git",
     ".svn",
@@ -306,17 +317,27 @@ document.addEventListener("DOMContentLoaded", () => {
   generateBtn.addEventListener("click", handleGenerateContext);
   copyBtn.addEventListener("click", copyToClipboard);
   helpBtn.addEventListener("click", () => helpModal.classList.add("visible"));
-  presetsBtn.addEventListener("click", () =>
-    presetsModal.classList.add("visible")
-  );
+  presetsBtn.addEventListener("click", () => {
+    captureModalOriginalState();
+    presetsModal.classList.add("visible");
+  });
   document.querySelectorAll(".modal-close-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      btn.closest(".modal").classList.remove("visible");
+      const modal = btn.closest(".modal");
+      if (modal.id === "presets-modal") {
+        tryClosePresetsModal();
+      } else {
+        modal.classList.remove("visible");
+      }
     });
   });
   window.addEventListener("click", (e) => {
     if (e.target.classList.contains("modal")) {
-      e.target.classList.remove("visible");
+      if (e.target.id === "presets-modal") {
+        tryClosePresetsModal();
+      } else {
+        e.target.classList.remove("visible");
+      }
     }
   });
 
@@ -346,6 +367,28 @@ document.addEventListener("DOMContentLoaded", () => {
   saveProjectBtn.addEventListener("click", handleSaveProject);
   loadProjectBtn.addEventListener("click", handleLoadProject);
   deleteProjectBtn.addEventListener("click", handleDeleteProject);
+
+  // Quick preset controls
+  quickPromptSelect.addEventListener("change", handleQuickPromptChange);
+  quickProjectSelect.addEventListener("change", () => {
+    // Sync with modal dropdown
+    projectPresetSelect.value = quickProjectSelect.value;
+  });
+  quickLoadProjectBtn.addEventListener("click", () => {
+    if (!quickProjectSelect.value) {
+      return alert("Please select a project to load.");
+    }
+    projectPresetSelect.value = quickProjectSelect.value;
+    handleLoadProject();
+  });
+  quickSaveProjectBtn.addEventListener("click", handleSaveProject);
+
+  // Track changes in modal for unsaved warning
+  presetPromptText.addEventListener("input", updateModalDirtyState);
+  presetPromptSelect.addEventListener("change", () => {
+    handleLoadPrompt();
+    updateModalDirtyState();
+  });
 
   // --- INITIALIZATION ---
   async function initializeApp() {
@@ -436,6 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateAllPresetUI() {
+    // Update modal prompt dropdown
     presetPromptSelect.innerHTML =
       '<option value="">-- Select a prompt --</option>';
     Object.keys(appPresets.prompts).forEach((name) => {
@@ -443,11 +487,96 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     presetPromptText.value = "";
 
+    // Update modal project dropdown
     projectPresetSelect.innerHTML =
       '<option value="">-- Select a project --</option>';
     Object.keys(appPresets.projects).forEach((name) => {
       projectPresetSelect.add(new Option(name, name));
     });
+
+    // Update quick prompt dropdown (preserve current selection if still valid)
+    const currentQuickPrompt = quickPromptSelect.value;
+    quickPromptSelect.innerHTML = '<option value="">-- None --</option>';
+    Object.keys(appPresets.prompts).forEach((name) => {
+      quickPromptSelect.add(new Option(name, name));
+    });
+    if (currentQuickPrompt && appPresets.prompts[currentQuickPrompt]) {
+      quickPromptSelect.value = currentQuickPrompt;
+    }
+
+    // Update quick project dropdown (preserve current selection if still valid)
+    const currentQuickProject = quickProjectSelect.value;
+    quickProjectSelect.innerHTML =
+      '<option value="">-- Select a saved project --</option>';
+    Object.keys(appPresets.projects).forEach((name) => {
+      quickProjectSelect.add(new Option(name, name));
+    });
+    if (currentQuickProject && appPresets.projects[currentQuickProject]) {
+      quickProjectSelect.value = currentQuickProject;
+    }
+
+    // Reset modal dirty state
+    modalPromptOriginalValue = "";
+    modalPromptOriginalSelection = "";
+  }
+
+  // --- QUICK PRESET HANDLERS ---
+  function handleQuickPromptChange() {
+    const name = quickPromptSelect.value;
+    if (name && appPresets.prompts[name]) {
+      quickPromptStatus.textContent = "✓ Applied";
+      quickPromptStatus.className = "preset-status active";
+      // Also sync with modal
+      presetPromptSelect.value = name;
+      presetPromptText.value = appPresets.prompts[name];
+    } else {
+      quickPromptStatus.textContent = "";
+      quickPromptStatus.className = "preset-status";
+      presetPromptSelect.value = "";
+      presetPromptText.value = "";
+    }
+  }
+
+  function getActivePromptText() {
+    const name = quickPromptSelect.value;
+    if (name && appPresets.prompts[name]) {
+      return appPresets.prompts[name];
+    }
+    return presetPromptText.value.trim();
+  }
+
+  // --- MODAL UNSAVED CHANGES TRACKING ---
+  function updateModalDirtyState() {
+    const currentSelection = presetPromptSelect.value;
+    const currentText = presetPromptText.value;
+
+    // Check if we have unsaved changes
+    const hasChanges = currentText !== modalPromptOriginalValue ||
+                       currentSelection !== modalPromptOriginalSelection;
+
+    // Visual indicator could be added here if needed
+    presetsModal.dataset.dirty = hasChanges ? "true" : "false";
+  }
+
+  function captureModalOriginalState() {
+    modalPromptOriginalSelection = presetPromptSelect.value;
+    modalPromptOriginalValue = presetPromptText.value;
+    presetsModal.dataset.dirty = "false";
+  }
+
+  function hasUnsavedModalChanges() {
+    return presetsModal.dataset.dirty === "true";
+  }
+
+  function tryClosePresetsModal() {
+    if (hasUnsavedModalChanges()) {
+      const confirmClose = confirm(
+        "You have unsaved changes in the prompt editor. Close without saving?"
+      );
+      if (!confirmClose) return false;
+    }
+    presetsModal.classList.remove("visible");
+    return true;
   }
 
   // --- PRESETS LOGIC ---
@@ -1206,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- CONTEXT GENERATION ---
   async function handleGenerateContext() {
-    const presetPrompt = presetPromptText.value.trim();
+    const presetPrompt = getActivePromptText();
     let output = "";
     if (presetPrompt) output += `${presetPrompt}\n\n---\n\n`;
     output += `Task: ${

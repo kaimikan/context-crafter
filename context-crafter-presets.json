@@ -47,25 +47,6 @@
           "handleKey": "project-Lesto Hub-panel-1"
         }
       ]
-    },
-    "3 test": {
-      "panelConfigs": [
-        {
-          "title": "invenda-machine-checklist-client",
-          "rootName": "invenda-machine-checklist-client",
-          "handleKey": "project-3 test-panel-0"
-        },
-        {
-          "title": "invenda-machine-checklist-server",
-          "rootName": "invenda-machine-checklist-server",
-          "handleKey": "project-3 test-panel-1"
-        },
-        {
-          "title": "law-watchdog",
-          "rootName": "law-watchdog",
-          "handleKey": "project-3 test-panel-2"
-        }
-      ]
     }
   }
 }

@@ -334,5 +334,5 @@ async function handleLoadProject() {
 |---------|--------|-------|
 | 1. Persist selections on refresh | Complete | Added `captureSelectionState()` and `restoreSelectionState()` functions |
 | 2. Dynamic panel system | Complete | Dynamic panel creation/removal, event delegation, max 6 panels |
-| 3. Natural preset flow | Not Started | |
+| 3. Natural preset flow | Complete | Quick dropdowns in main UI, unsaved changes warning in modal |
 | 4. Subselection presets | Not Started | |

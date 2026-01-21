@@ -616,6 +616,56 @@ textarea {
   background-color: var(--secondary-btn-hover);
 }
 
+/* Quick Preset Sections (Main UI) */
+.quick-project-section,
+.quick-prompt-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+
+.quick-project-section label,
+.quick-prompt-section label {
+  white-space: nowrap;
+}
+
+#quick-project-select,
+#quick-prompt-select {
+  padding: 8px;
+  background-color: var(--code-bg);
+  color: var(--text-color);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  min-width: 200px;
+}
+
+.quick-project-section button {
+  padding: 8px 15px;
+}
+
+.secondary-btn {
+  background-color: var(--secondary-btn-bg);
+}
+
+.secondary-btn:hover {
+  background-color: var(--secondary-btn-hover);
+}
+
+.preset-status {
+  font-size: 0.9em;
+  color: #888;
+}
+
+.preset-status.active {
+  color: #4caf50;
+  font-weight: bold;
+}
+
 .generate-copy-buttons {
   display: flex;
   justify-content: space-between;
