@@ -244,6 +244,7 @@ textarea {
   border-radius: 4px;
   transition: background-color 0.2s, border 0.2s;
   border: 1px solid transparent;
+  min-width: 0; /* Allow flex item to shrink below content size */
 }
 
 .tree-item:hover {
@@ -270,6 +271,16 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0; /* Allow flex item to shrink */
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.file-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dep-toggle-btn {
@@ -309,6 +320,7 @@ textarea {
   margin-left: auto;
   display: flex;
   gap: 5px;
+  flex-shrink: 0;
 }
 .tree-item-options input[type="radio"] {
   display: none;
@@ -347,6 +359,9 @@ textarea {
   cursor: pointer;
   user-select: none;
   font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .folder-title:hover {

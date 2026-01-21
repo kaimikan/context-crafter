@@ -760,6 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (item.type === "directory") {
       itemName.innerHTML = `<span>&#x1F4C2;</span> ${item.name}`;
       itemName.classList.add("folder-title");
+      itemName.title = item.name;
     } else {
       const depBtn = document.createElement("span");
       depBtn.className = "dep-toggle-btn dep-btn";
@@ -773,7 +774,11 @@ document.addEventListener("DOMContentLoaded", () => {
       dependentBtn.textContent = "[↓U]";
       itemName.appendChild(dependentBtn);
 
-      itemName.append(` 📄 ${item.name}`);
+      const fileNameSpan = document.createElement("span");
+      fileNameSpan.className = "file-name-text";
+      fileNameSpan.textContent = ` 📄 ${item.name}`;
+      fileNameSpan.title = item.name;
+      itemName.appendChild(fileNameSpan);
     }
     itemDiv.appendChild(itemName);
 
