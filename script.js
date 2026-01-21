@@ -1,22 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   // --- STATE & DOM ELEMENTS ---
-  const panels = [
-    {
-      id: "left",
-      handle: null,
-      fileHandles: new Map(),
-      dependencies: new Map(),
-      dependents: new Map(),
-    },
-    {
-      id: "right",
-      handle: null,
-      fileHandles: new Map(),
-      dependencies: new Map(),
-      dependents: new Map(),
-    },
-  ];
+  const panels = []; // Panels are now created dynamically
   const fileHighlightStates = new Map();
+  const MAX_PANELS = 6;
   let additionalFileHandles = new Map();
   let presetsFileHandle = null;
   let appPresets = { prompts: {}, projects: {} };
@@ -140,28 +126,182 @@ document.addEventListener("DOMContentLoaded", () => {
   ]);
   const CHARS_PER_TOKEN = 4;
 
-  // --- EVENT LISTENERS ---
-  document.querySelectorAll(".select-dir-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) =>
-      handleSelectDirectory(e.target.dataset.panelIndex)
-    );
-  });
-  document.querySelectorAll(".refresh-dir-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) =>
-      handleRefreshDirectory(e.target.dataset.panelIndex)
-    );
-  });
-  document.querySelectorAll(".file-tree-container").forEach((container) => {
-    container.addEventListener("click", handleTreeClick);
-    container.addEventListener("change", handleOptionChange);
-    container.addEventListener("click", handleIconToggle);
-  });
-  document.querySelectorAll(".panel-title").forEach((input) => {
-    input.addEventListener("change", (e) => {
-      const panelIndex = e.target.closest(".panel").id === "panel-left" ? 0 : 1;
-      panels[panelIndex].title = e.target.value;
+  // Dynamic panels container
+  const panelsContainer = document.getElementById("panels-container");
+  const addPanelBtn = document.getElementById("add-panel-btn");
+
+  // --- DYNAMIC PANEL MANAGEMENT ---
+  function createPanelState(index) {
+    return {
+      id: `panel-${index}`,
+      handle: null,
+      fileHandles: new Map(),
+      dependencies: new Map(),
+      dependents: new Map(),
+      title: "",
+    };
+  }
+
+  function createPanelElement(index) {
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.id = `panel-${index}`;
+    panel.dataset.panelIndex = index;
+
+    panel.innerHTML = `
+      <div class="panel-header">
+        <input type="text" class="panel-title" placeholder="e.g., Project ${index + 1}" />
+        <button class="remove-panel-btn" data-panel-index="${index}" title="Remove panel">✕</button>
+      </div>
+      <div class="panel-buttons">
+        <button class="select-dir-btn" data-panel-index="${index}">Select Folder</button>
+        <button class="refresh-dir-btn" data-panel-index="${index}" style="display: none">🔄 Refresh</button>
+      </div>
+      <div class="file-tree-container" data-panel-index="${index}">
+        <p class="placeholder">Panel ${index + 1} is empty...</p>
+      </div>
+    `;
+
+    return panel;
+  }
+
+  function addPanel() {
+    if (panels.length >= MAX_PANELS) {
+      alert(`Maximum of ${MAX_PANELS} panels allowed.`);
+      return null;
+    }
+
+    const index = panels.length;
+    const panelState = createPanelState(index);
+    panels.push(panelState);
+
+    const panelElement = createPanelElement(index);
+    panelsContainer.appendChild(panelElement);
+
+    updateRemoveButtonsState();
+    return index;
+  }
+
+  function removePanel(index) {
+    if (panels.length <= 1) {
+      alert("At least one panel must remain.");
+      return;
+    }
+
+    // Clear panel state
+    clearPanelState(index);
+
+    // Remove from DOM
+    const panelElement = document.getElementById(`panel-${index}`);
+    if (panelElement) {
+      panelElement.remove();
+    }
+
+    // Remove from panels array
+    panels.splice(index, 1);
+
+    // Re-index remaining panels
+    reindexPanels();
+    updateRemoveButtonsState();
+  }
+
+  function reindexPanels() {
+    panels.forEach((panel, newIndex) => {
+      const oldId = panel.id;
+      panel.id = `panel-${newIndex}`;
+
+      const panelElement = panelsContainer.children[newIndex];
+      if (panelElement) {
+        panelElement.id = `panel-${newIndex}`;
+        panelElement.dataset.panelIndex = newIndex;
+
+        // Update all data-panel-index attributes within this panel
+        panelElement.querySelectorAll("[data-panel-index]").forEach((el) => {
+          el.dataset.panelIndex = newIndex;
+        });
+
+        // Update placeholder text
+        const placeholder = panelElement.querySelector(".placeholder");
+        if (placeholder) {
+          placeholder.textContent = `Panel ${newIndex + 1} is empty...`;
+        }
+
+        // Update title placeholder
+        const titleInput = panelElement.querySelector(".panel-title");
+        if (titleInput && !titleInput.value) {
+          titleInput.placeholder = `e.g., Project ${newIndex + 1}`;
+        }
+      }
     });
+  }
+
+  function updateRemoveButtonsState() {
+    const removeButtons = document.querySelectorAll(".remove-panel-btn");
+    removeButtons.forEach((btn) => {
+      btn.disabled = panels.length <= 1;
+    });
+  }
+
+  function initializeDefaultPanels() {
+    // Create 2 default panels
+    addPanel();
+    addPanel();
+  }
+
+  // --- EVENT LISTENERS ---
+  // Event delegation for dynamically created panels
+  panelsContainer.addEventListener("click", (e) => {
+    const target = e.target;
+
+    // Handle select directory button
+    if (target.classList.contains("select-dir-btn")) {
+      handleSelectDirectory(target.dataset.panelIndex);
+      return;
+    }
+
+    // Handle refresh directory button
+    if (target.classList.contains("refresh-dir-btn")) {
+      handleRefreshDirectory(target.dataset.panelIndex);
+      return;
+    }
+
+    // Handle remove panel button
+    if (target.classList.contains("remove-panel-btn")) {
+      const index = parseInt(target.dataset.panelIndex);
+      if (confirm(`Remove Panel ${index + 1}? This will clear all its contents.`)) {
+        removePanel(index);
+      }
+      return;
+    }
+
+    // Handle tree clicks (folder toggle and dependency buttons)
+    const treeContainer = target.closest(".file-tree-container");
+    if (treeContainer) {
+      handleTreeClick(e);
+      handleIconToggle(e);
+    }
   });
+
+  panelsContainer.addEventListener("change", (e) => {
+    const target = e.target;
+
+    // Handle panel title change
+    if (target.classList.contains("panel-title")) {
+      const panelElement = target.closest(".panel");
+      const panelIndex = parseInt(panelElement.dataset.panelIndex);
+      panels[panelIndex].title = target.value;
+      return;
+    }
+
+    // Handle radio button changes in file tree
+    const treeContainer = target.closest(".file-tree-container");
+    if (treeContainer) {
+      handleOptionChange(e);
+    }
+  });
+
+  // Add panel button
+  addPanelBtn.addEventListener("click", addPanel);
 
   generateBtn.addEventListener("click", handleGenerateContext);
   copyBtn.addEventListener("click", copyToClipboard);
@@ -211,6 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function initializeApp() {
     await initDB();
     console.log("Database initialized.");
+    initializeDefaultPanels();
     await tryAutoLoadPresets();
     updateAllPresetUI();
   }
@@ -379,6 +520,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const projectConfig = appPresets.projects[name];
     if (!projectConfig) return alert("Could not find project data.");
 
+    const requiredPanels = projectConfig.panelConfigs.length;
+
+    // Adjust panel count to match saved project
+    while (panels.length < requiredPanels) {
+      addPanel();
+    }
+    while (panels.length > requiredPanels && panels.length > 1) {
+      // Remove panels from the end without confirmation
+      const index = panels.length - 1;
+      clearPanelState(index);
+      const panelElement = document.getElementById(`panel-${index}`);
+      if (panelElement) panelElement.remove();
+      panels.splice(index, 1);
+    }
+    reindexPanels();
+    updateRemoveButtonsState();
+
     let allPermissionsGranted = true;
     for (let i = 0; i < projectConfig.panelConfigs.length; i++) {
       const panelConfig = projectConfig.panelConfigs[i];
@@ -388,6 +546,14 @@ document.addEventListener("DOMContentLoaded", () => {
           const permissionGranted = await verifyHandlePermission(handle);
           if (permissionGranted) {
             await loadDirectoryIntoPanel(i, handle);
+            // Restore title if saved
+            if (panelConfig.title) {
+              panels[i].title = panelConfig.title;
+              const titleInput = document.querySelector(
+                `#panel-${i} .panel-title`
+              );
+              if (titleInput) titleInput.value = panelConfig.title;
+            }
           } else {
             allPermissionsGranted = false;
             alert(
@@ -519,7 +685,7 @@ document.addEventListener("DOMContentLoaded", () => {
     applyViewFilters();
 
     const panelTitleInput = document.querySelector(
-      `#panel-${panel.id} .panel-title`
+      `#${panel.id} .panel-title`
     );
     panelTitleInput.value = directoryHandle.name;
     panel.title = directoryHandle.name;
