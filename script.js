@@ -484,7 +484,11 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleRefreshDirectory(panelIndex) {
     const panel = panels[panelIndex];
     if (panel.handle) {
+      // Capture current selections before refresh
+      const savedSelections = captureSelectionState(panelIndex);
       await loadDirectoryIntoPanel(panelIndex, panel.handle);
+      // Restore selections after tree is rebuilt
+      restoreSelectionState(panelIndex, savedSelections);
     } else {
       alert("No folder selected to refresh. Please select a folder first.");
     }
@@ -961,6 +965,43 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.dependents.clear();
     panel.fileHandles.clear();
     panel.title = "";
+  }
+
+  function captureSelectionState(panelIndex) {
+    const panel = panels[panelIndex];
+    const selections = new Map();
+    if (!panel || !panel.handle) return selections;
+
+    const rootName = panel.handle.name;
+    document
+      .querySelectorAll(
+        `.file-tree-container[data-panel-index="${panelIndex}"] input[type="radio"]:checked`
+      )
+      .forEach((radio) => {
+        const fullPath = radio.dataset.filePath;
+        // Store relative path (without root folder name)
+        const relativePath = fullPath.substring(rootName.length + 1);
+        if (relativePath) {
+          selections.set(relativePath, radio.value);
+        }
+      });
+    return selections;
+  }
+
+  function restoreSelectionState(panelIndex, selections) {
+    const panel = panels[panelIndex];
+    if (!panel || !panel.handle || selections.size === 0) return;
+
+    const rootName = panel.handle.name;
+    selections.forEach((value, relativePath) => {
+      const fullPath = `${rootName}/${relativePath}`;
+      const radio = document.querySelector(
+        `.file-tree-container[data-panel-index="${panelIndex}"] input[type="radio"][data-file-path="${CSS.escape(fullPath)}"][value="${value}"]`
+      );
+      if (radio) {
+        radio.checked = true;
+      }
+    });
   }
 
   function clearAllHighlights() {
