@@ -1,7 +1,9 @@
 {
   "prompts": {
     "No Canvas": "Do not use Canvas.",
-    "No Canvas + Extra": "Do not use Canvas.\n\nDo not rush into writing the code initially and give me an implementation plan if you think that you have enough information to move onto the development BUT not before asking me if I agree with the plan.\n\nIf you think you need more context, please respond with saying it and where it is necessary and I will provide it.\n\nWhen it comes to code blocks, please try to not send too many at once, and keep the code blocks focused on only the relevant parts that were changed/added/removed. Do not rush into sending code blocks for more than one major functionality at once."
+    "No Canvas + Extra": "Do not use Canvas.\n\nDo not rush into writing the code initially and give me an implementation plan if you think that you have enough information to move onto the development BUT not before asking me if I agree with the plan.\n\nIf you think you need more context, please respond with saying it and where it is necessary and I will provide it.\n\nWhen it comes to code blocks, please try to not send too many at once, and keep the code blocks focused on only the relevant parts that were changed/added/removed. Do not rush into sending code blocks for more than one major functionality at once.",
+    "Snail": "I am a newbie programmer, please take your time explaining the concepts and when providing actual code refactors make sure to not leave out code, out of the code section being refactored. I would much rather be asked 5 times about something that you are unsure about than to rush headfirst into writing the code.",
+    "Bars": "Do not use Canvas.\n\nDo not rush into writing the code initially and give me an implementation plan.\nIf you think that you have enough information to move onto the development please do so AFTER asking me if I agree with the plan.\n\nIf you think you need more context, please respond with saying it and where it is necessary and I will provide it.\n\nWhen it comes to code blocks, please try to not send too many at once, and keep the code blocks focused on only the relevant parts that were changed/added/removed. Do not rush into sending code blocks for more than one major functionality at once since I want to review, implement and test them as we go if possible."
   },
   "projects": {
     "Voice of Employees": {
@@ -15,6 +17,34 @@
           "title": "voe-server",
           "rootName": "voe-server",
           "handleKey": "project-Voice of Employees-panel-1"
+        }
+      ]
+    },
+    "Invenda Checklist": {
+      "panelConfigs": [
+        {
+          "title": "invenda-machine-checklist-client",
+          "rootName": "invenda-machine-checklist-client",
+          "handleKey": "project-Invenda Checklist-panel-0"
+        },
+        {
+          "title": "invenda-machine-checklist-server",
+          "rootName": "invenda-machine-checklist-server",
+          "handleKey": "project-Invenda Checklist-panel-1"
+        }
+      ]
+    },
+    "Lesto Hub": {
+      "panelConfigs": [
+        {
+          "title": "hub-client",
+          "rootName": "hub-client",
+          "handleKey": "project-Lesto Hub-panel-0"
+        },
+        {
+          "title": "hub-server",
+          "rootName": "hub-server",
+          "handleKey": "project-Lesto Hub-panel-1"
         }
       ]
     }
